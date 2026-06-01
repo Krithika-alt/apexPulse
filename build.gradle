@@ -1,36 +1,32 @@
 plugins {
     id 'java'
-    id 'application'
-    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'org.springframework.boot' version '4.0.6'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.apexpulse'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
+description = 'apexPulse'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
 
 repositories {
     mavenCentral()
 }
 
-javafx {
-    version = "17"
-    modules = [ 'javafx.controls', 'javafx.fxml' ]
-}
-
 dependencies {
-    // UI layout engine
-    implementation 'org.openjfx:javafx-controls:17'
-    implementation 'org.openjfx:javafx-fxml:17'
-
-    // Testing support
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-application {
-    mainClass = 'com.apexpulse.apexpulse.ui.MainApplication'
-}
-
-test {
+tasks.named('test') {
     useJUnitPlatform()
 }
