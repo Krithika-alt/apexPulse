@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ApexPulse · Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { text-decoration: none; }
+    a:hover [data-nav-item] { background: var(--panel); }
+    [data-apx-theme] {
+      --bg:      #0B0F17; --bg2:    #0F1521; --panel:  #151C2A; --panel2: #1B2433;
+      --line:    #243049; --line2:  #2E3A54; --text:   #E8EDF6; --text2:  #9AA7BE; --text3:  #65728C;
+      --brand:   #2DE2C5; --brand2: #15A892; --brandsoft: rgba(45,226,197,0.12);
+      --esi1:    #FF3B4E; --esi2:   #FF8A33; --esi3:   #FFC53D; --esi4:   #38C172; --esi5:   #4D9DE0;
+      --esi1soft:rgba(255,59,78,0.13); --esi2soft:rgba(255,138,51,0.13);
+      --esi3soft:rgba(255,197,61,0.13); --esi4soft:rgba(56,193,114,0.13); --esi5soft:rgba(77,157,224,0.13);
+    }
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb { background:var(--line2); border-radius:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    tr:hover td { background: var(--panel2); }
+  </style>
+</head>
+<body>
+
+<div data-apx-theme="dark"
+     style="display:flex; min-height:100vh; width:100%; background:var(--bg); color:var(--text);
+            font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased;">
+
+  <!-- SIDEBAR -->
+  <aside style="width:236px; flex:none; background:var(--bg2); border-right:1px solid var(--line);
+                display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:hidden;">
+    <div style="padding:22px 20px 18px; display:flex; align-items:center; gap:11px; border-bottom:1px solid var(--line);">
+      <div style="width:38px;height:38px;flex:none;border-radius:9px;
+                  background:linear-gradient(150deg,var(--panel2),var(--panel));border:1px solid var(--line2);
+                  display:flex;align-items:center;justify-content:center;
+                  box-shadow:0 0 0 1px rgba(45,226,197,0.08),0 6px 16px rgba(0,0,0,0.35);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <polyline points="1,13 6,13 8,13 10,5 13,19 15,10 17,13 23,13"
+                    stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="line-height:1.05;">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.01em;">ApexPulse</div>
+        <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);font-weight:600;margin-top:2px;">Triage OS</div>
+      </div>
+    </div>
+    <nav style="padding:14px 12px; display:flex; flex-direction:column; gap:3px;">
+      <div style="font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:6px 10px 8px;">Workspace</div>
+      <a href="/"
+         style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;
+                padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:600;
+                color:var(--text);background:var(--panel);">
+        <span style="width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;"></span>
+        Command Center
+      </a>
+      <a href="/intake"
+         style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;
+                padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--text2);">
+        <span style="width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;opacity:0;"></span>
+        Patient Intake
+      </a>
+    </nav>
+    <div style="margin-top:auto; padding:14px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;padding:2px 4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--esi4);box-shadow:0 0 8px var(--esi4);"></span>
+        <span style="font-size:11px;color:var(--text3);">Live · Byte2Beat dataset</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main style="flex:1; min-width:0; display:flex; flex-direction:column;">
+
+    <!-- Header -->
+    <header style="height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
+                   justify-content:space-between;padding:0 28px;background:var(--bg2);position:sticky;top:0;z-index:5;">
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;letter-spacing:-0.01em;">Command Center</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:1px;">Live triage queue · auto-prioritised by acuity</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:18px;">
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--text);" id="apx-clock">--:--:--</div>
+          <div style="font-size:11px;color:var(--text3);">Bay 7 · Charge RN</div>
+        </div>
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);
+                    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text2);">AD</div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div style="flex:1; overflow:auto; padding:26px 28px 60px;">
+      <div style="display:flex;flex-direction:column;gap:20px;">
+
+        <!-- ── STAT STRIP ── -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
+            <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">In queue</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;"
+                 th:text="${queueSize}">0</div>
+          </div>
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--esi1);border-radius:12px;padding:15px 17px;">
+            <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Critical · ESI 1–2</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;color:var(--esi1);"
+                 th:text="${critical}">0</div>
+          </div>
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
+            <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Median wait</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;">
+              <span th:text="${medianWait}">0</span><span style="font-size:14px;color:var(--text3);">m</span>
+            </div>
+          </div>
+
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
+            <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Beds free</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;color:var(--brand);">
+              <span th:text="${bedsFree}">0</span><span style="font-size:14px;color:var(--text3);" th:text="'/' + ${bedsTotal}">/22</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── NEXT UP HERO ── -->
+        <div th:if="${nextUp != null}"
+             th:style="'background:linear-gradient(120deg,' + ${nextUp.esiCssVar.replace('var(--esi', 'var(--esi').replace(')', 'soft)')} + ',var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;'"
+             style="background:linear-gradient(120deg,var(--esi1soft),var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;">
+
+          <!-- ESI color bar -->
+          <div th:style="'position:absolute;left:0;top:0;bottom:0;width:5px;background:' + ${nextUp.esiCssVar} + ';'"
+               style="position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--esi1);"></div>
+
+          <!-- Identity -->
+          <div style="flex:none;min-width:188px;padding-left:6px;">
+            <div th:style="'display:inline-flex;align-items:center;gap:7px;background:' + ${nextUp.esiCssVar} + ';color:#fff;font-weight:700;font-size:10.5px;letter-spacing:0.07em;padding:5px 10px;border-radius:6px;text-transform:uppercase;'"
+                 style="display:inline-flex;align-items:center;gap:7px;background:var(--esi1);color:#fff;font-weight:700;font-size:10.5px;letter-spacing:0.07em;padding:5px 10px;border-radius:6px;text-transform:uppercase;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#fff;"></span>
+              <span>Next up · ESI </span><span th:text="${nextUp.esi}">1</span>
+            </div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:25px;margin-top:13px;line-height:1.05;"
+                 th:text="${nextUp.name}">—</div>
+            <div style="font-size:12.5px;color:var(--text2);margin-top:4px;"
+                 th:text="${nextUp.demographics} + ' · arrived by EMS'">—</div>
+            <div style="font-size:13.5px;color:var(--text);margin-top:12px;font-weight:600;"
+                 th:text="${nextUp.complaint}">—</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:3px;" th:text="${nextUp.esiLabel}">—</div>
+          </div>
+
+          <!-- Priority score -->
+          <div style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;
+                      padding:0 20px;border-left:1px solid var(--line);border-right:1px solid var(--line);">
+            <div style="font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;">Priority</div>
+            <div th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:52px;line-height:1;color:' + ${nextUp.esiCssVar} + ';margin-top:5px;'"
+                 style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:52px;line-height:1;color:var(--esi1);margin-top:5px;"
+                 th:text="${nextUp.priorityScore}">98</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:3px;">heap max</div>
+          </div>
+
+          <!-- Vitals grid -->
+          <div style="flex:1 1 300px;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-content:center;">
+            <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
+              <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">HR</div>
+              <div th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;color:' + ${nextUp.hrColor} + ';'"
+                   style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;"
+                   th:text="${nextUp.heartRate}">—</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:4px;">bpm</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
+              <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">BP</div>
+              <div th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:18px;margin-top:7px;line-height:1;color:' + ${nextUp.bpColor} + ';'"
+                   style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;margin-top:7px;line-height:1;"
+                   th:text="${nextUp.bp}">—</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:4px;">mmHg</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
+              <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">SpO₂</div>
+              <div th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;color:' + ${nextUp.spo2Color} + ';'"
+                   style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;"
+                   th:text="${nextUp.spo2}">—</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:4px;">%</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
+              <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">RR</div>
+              <div th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;color:' + ${nextUp.rrColor} + ';'"
+                   style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;"
+                   th:text="${nextUp.respiratoryRate}">—</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:4px;">/min</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
+              <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">Temp</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:21px;margin-top:7px;line-height:1;color:inherit;"
+                   th:text="${#numbers.formatDecimal(nextUp.temperature,1,1)}">—</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:4px;">°C</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PRIORITY QUEUE TABLE ── -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;">Priority Queue</div>
+            <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;">sorted: acuity ↓ then wait ↓</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;min-width:900px;">
+              <thead>
+                <tr style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);text-align:left;">
+                  <th style="padding:10px 14px 10px 20px;font-weight:600;">Acuity</th>
+                  <th style="padding:10px 14px;font-weight:600;">Patient</th>
+                  <th style="padding:10px 8px;font-weight:600;text-align:center;">HR</th>
+                  <th style="padding:10px 8px;font-weight:600;text-align:center;">BP</th>
+                  <th style="padding:10px 8px;font-weight:600;text-align:center;">SpO₂</th>
+                  <th style="padding:10px 8px;font-weight:600;text-align:center;">RR</th>
+                  <th style="padding:10px 8px;font-weight:600;text-align:center;">Temp</th>
+                  <th style="padding:10px 12px;font-weight:600;text-align:center;">Wait</th>
+                  <th style="padding:10px 18px 10px 8px;font-weight:600;text-align:right;">Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="p : ${queue}" style="border-top:1px solid var(--line);">
+
+                  <!-- ESI badge -->
+                  <td style="padding:0;">
+                    <div th:style="'display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;border-left:4px solid ' + ${p.esiCssVar} + ';'"
+                         style="display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;border-left:4px solid var(--esi1);">
+                      <span th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:13px;color:#fff;background:' + ${p.esiCssVar} + ';width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;'"
+                            style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;color:#fff;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;"
+                            th:text="${p.esi}">1</span>
+                      <span style="font-size:10.5px;color:var(--text3);line-height:1.1;" th:text="${p.esiLabel}">—</span>
+                    </div>
+                  </td>
+
+                  <!-- Name / complaint -->
+                  <td style="padding:10px 14px;">
+                    <div style="font-weight:600;font-size:13px;" th:text="${p.name}">—</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px;"
+                         th:text="${p.demographics} + ' · ' + ${p.complaint}">—</div>
+                  </td>
+
+                  <!-- Vitals -->
+                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.hrColor} + ';'"
+                      style="padding:10px 8px;text-align:center;"
+                      th:text="${p.heartRate}">—</td>
+
+                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:500;font-size:12.5px;color:' + ${p.bpColor} + ';'"
+                      style="padding:10px 8px;text-align:center;"
+                      th:text="${p.bp}">—</td>
+
+                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.spo2Color} + ';'"
+                      style="padding:10px 8px;text-align:center;"
+                      th:text="${p.spo2}">—</td>
+
+                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.rrColor} + ';'"
+                      style="padding:10px 8px;text-align:center;"
+                      th:text="${p.respiratoryRate}">—</td>
+
+                  <td style="padding:10px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:12.5px;color:var(--text2);"
+                      th:text="${#numbers.formatDecimal(p.temperature,1,1)}">—</td>
+
+                  <td style="padding:10px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text2);"
+                      th:text="${p.waitLabel}">—</td>
+
+                  <!-- Score -->
+                  <td style="padding:10px 18px 10px 8px;text-align:right;">
+                    <span th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:17px;color:' + ${p.esiCssVar} + ';'"
+                          style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px;"
+                          th:text="${p.priorityScore}">0</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- end content column -->
+    </div><!-- end scrollable area -->
+  </main>
+</div>
+
+<script>
+  (function tick() {
+    const el = document.getElementById('apx-clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12: false});
+    setTimeout(tick, 1000);
+  })();
+</script>
+
+</body>
+</html>

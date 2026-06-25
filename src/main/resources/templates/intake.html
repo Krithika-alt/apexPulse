@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ApexPulse · Patient Intake</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    [data-apx-theme] {
+      --bg:#0B0F17; --bg2:#0F1521; --panel:#151C2A; --panel2:#1B2433;
+      --line:#243049; --line2:#2E3A54; --text:#E8EDF6; --text2:#9AA7BE; --text3:#65728C;
+      --brand:#2DE2C5; --brand2:#15A892; --brandsoft:rgba(45,226,197,0.12);
+      --esi1:#FF3B4E; --esi2:#FF8A33; --esi3:#FFC53D; --esi4:#38C172; --esi5:#4D9DE0;
+      --esi1soft:rgba(255,59,78,0.13); --esi2soft:rgba(255,138,51,0.13);
+      --esi3soft:rgba(255,197,61,0.13); --esi4soft:rgba(56,193,114,0.13); --esi5soft:rgba(77,157,224,0.13);
+    }
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb { background:var(--line2); border-radius:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    input[type=text], input[type=number] {
+      width:100%; background:var(--bg2); border:1px solid var(--line2); color:var(--text);
+      border-radius:9px; padding:10px 12px; font-size:13px; font-family:inherit; outline:none;
+    }
+    input[type=text]:focus, input[type=number]:focus { border-color:var(--brand); }
+    input[type=range] {
+      -webkit-appearance:none; appearance:none; width:100%; height:5px;
+      border-radius:4px; background:var(--line2); outline:none; cursor:pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:17px; height:17px; border-radius:50%;
+      background:var(--brand); cursor:pointer; border:3px solid var(--bg2);
+      box-shadow:0 0 0 1px var(--brand);
+    }
+    .sex-btn {
+      all:unset; box-sizing:border-box; cursor:pointer; flex:1; text-align:center;
+      padding:9px 0; border-radius:8px; font-size:13px; font-weight:600;
+      font-family:'IBM Plex Mono',monospace; border:1px solid var(--line2);
+      color:var(--text3); background:var(--bg2); transition:border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .sex-btn.active { border-color:var(--brand); color:var(--brand); background:var(--brandsoft); }
+    label.field-label {
+      font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase;
+      color:var(--text3); font-weight:600; display:block; margin-bottom:7px;
+    }
+    @media (max-width:1080px) {
+      #intake-grid { grid-template-columns: 1fr !important; }
+      #intake-preview { position:static !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div data-apx-theme="dark"
+     style="display:flex; min-height:100vh; width:100%; background:var(--bg); color:var(--text);
+            font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased;">
+
+  <!-- SIDEBAR (same as command.html) -->
+  <aside style="width:236px; flex:none; background:var(--bg2); border-right:1px solid var(--line);
+                display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:hidden;">
+    <div style="padding:22px 20px 18px; display:flex; align-items:center; gap:11px; border-bottom:1px solid var(--line);">
+      <div style="width:38px;height:38px;flex:none;border-radius:9px;
+                  background:linear-gradient(150deg,var(--panel2),var(--panel));border:1px solid var(--line2);
+                  display:flex;align-items:center;justify-content:center;
+                  box-shadow:0 0 0 1px rgba(45,226,197,0.08),0 6px 16px rgba(0,0,0,0.35);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <polyline points="1,13 6,13 8,13 10,5 13,19 15,10 17,13 23,13"
+                    stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="line-height:1.05;">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.01em;">ApexPulse</div>
+        <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);font-weight:600;margin-top:2px;">Triage OS</div>
+      </div>
+    </div>
+    <nav style="padding:14px 12px; display:flex; flex-direction:column; gap:3px;">
+      <div style="font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:6px 10px 8px;">Workspace</div>
+      <a href="/"
+         style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;
+                padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--text2);">
+        <span style="width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;opacity:0;"></span>
+        Command Center
+      </a>
+      <a href="/intake"
+         style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;
+                padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:600;
+                color:var(--text);background:var(--panel);">
+        <span style="width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;"></span>
+        Patient Intake
+      </a>
+    </nav>
+    <div style="margin-top:auto; padding:14px 12px; border-top:1px solid var(--line);">
+      <div style="display:flex;align-items:center;gap:8px;padding:2px 4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--esi4);box-shadow:0 0 8px var(--esi4);"></span>
+        <span style="font-size:11px;color:var(--text3);">Live · Byte2Beat dataset</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main style="flex:1; min-width:0; display:flex; flex-direction:column;">
+    <header style="height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
+                   justify-content:space-between;padding:0 28px;background:var(--bg2);position:sticky;top:0;z-index:5;">
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;letter-spacing:-0.01em;">Patient Intake</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:1px;">Capture vitals · live ESI + priority preview</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:18px;">
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--text);" id="apx-clock">--:--:--</div>
+          <div style="font-size:11px;color:var(--text3);">Bay 7 · Charge RN</div>
+        </div>
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);
+                    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text2);">AD</div>
+      </div>
+    </header>
+
+    <div style="flex:1; overflow:auto; padding:26px 28px 60px;">
+      <form th:action="@{/intake}" method="post" id="intake-form">
+
+        <div id="intake-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start;max-width:1160px;">
+
+          <!-- ── FORM COLUMN ── -->
+          <div style="display:flex;flex-direction:column;gap:18px;">
+
+            <!-- Patient demographics -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;">
+              <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;margin-bottom:16px;">Patient</div>
+              <div style="display:grid;grid-template-columns:1fr 92px 120px;gap:13px;margin-bottom:15px;">
+                <div>
+                  <label class="field-label" for="name">Name</label>
+                  <input type="text" id="name" name="name" placeholder="Surname, Given"
+                         th:value="${patient.name}" oninput="updatePreview()">
+                </div>
+                <div>
+                  <label class="field-label" for="age">Age</label>
+                  <input type="number" id="age" name="age" min="0" max="120"
+                         style="font-family:'IBM Plex Mono',monospace;"
+                         th:value="${patient.age}" oninput="updatePreview()">
+                </div>
+                <div>
+                  <label class="field-label">Sex</label>
+                  <div style="display:flex;gap:6px;">
+                    <button type="button" class="sex-btn" id="btn-m" onclick="setSex('M')">M</button>
+                    <button type="button" class="sex-btn" id="btn-f" onclick="setSex('F')">F</button>
+                    <input type="hidden" id="sex" name="sex" value="M">
+                  </div>
+                </div>
+              </div>
+              <label class="field-label" for="complaint">Chief complaint</label>
+              <input type="text" id="complaint" name="complaint"
+                     placeholder="e.g. Chest pain radiating to left arm"
+                     th:value="${patient.complaint}" oninput="updatePreview()">
+            </div>
+
+            <!-- Vitals sliders -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;">Vitals</div>
+                <div style="font-size:10.5px;color:var(--text3);">out-of-range values flag automatically</div>
+              </div>
+
+              <!-- HR -->
+              <div style="padding:13px 0;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">Heart rate</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="hr-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">72</span>
+                    <span style="font-size:10.5px;color:var(--text3);">bpm</span>
+                    <span id="hr-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="heartRate" name="heartRate" min="40" max="180" step="1" value="72"
+                       oninput="syncSlider('heartRate','hr-val','hr-flag',60,100); updatePreview()">
+              </div>
+
+              <!-- Systolic BP -->
+              <div style="padding:13px 0;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">Systolic BP</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="sbp-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">120</span>
+                    <span style="font-size:10.5px;color:var(--text3);">mmHg</span>
+                    <span id="sbp-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="systolicBp" name="systolicBp" min="60" max="220" step="1" value="120"
+                       oninput="syncSlider('systolicBp','sbp-val','sbp-flag',90,140); updatePreview()">
+              </div>
+
+              <!-- Diastolic BP -->
+              <div style="padding:13px 0;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">Diastolic BP</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="dbp-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">78</span>
+                    <span style="font-size:10.5px;color:var(--text3);">mmHg</span>
+                    <span id="dbp-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="diastolicBp" name="diastolicBp" min="30" max="140" step="1" value="78"
+                       oninput="syncSlider('diastolicBp','dbp-val','dbp-flag',60,90); updatePreview()">
+              </div>
+
+              <!-- SpO2 -->
+              <div style="padding:13px 0;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">SpO₂</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="spo2-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">98</span>
+                    <span style="font-size:10.5px;color:var(--text3);">%</span>
+                    <span id="spo2-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="spo2" name="spo2" min="70" max="100" step="1" value="98"
+                       oninput="syncSlider('spo2','spo2-val','spo2-flag',94,100); updatePreview()">
+              </div>
+
+              <!-- RR -->
+              <div style="padding:13px 0;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">Respiratory rate</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="rr-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">16</span>
+                    <span style="font-size:10.5px;color:var(--text3);">/min</span>
+                    <span id="rr-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="respiratoryRate" name="respiratoryRate" min="6" max="40" step="1" value="16"
+                       oninput="syncSlider('respiratoryRate','rr-val','rr-flag',12,20); updatePreview()">
+              </div>
+
+              <!-- Temperature -->
+              <div style="padding:13px 0;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+                  <span style="font-size:12.5px;font-weight:500;">Temperature</span>
+                  <span style="display:flex;align-items:baseline;gap:6px;">
+                    <span id="temp-val" style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;">36.6</span>
+                    <span style="font-size:10.5px;color:var(--text3);">°C</span>
+                    <span id="temp-flag" style="font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;opacity:0;color:var(--esi2);">—</span>
+                  </span>
+                </div>
+                <input type="range" id="temperature" name="temperature" min="34" max="41" step="0.1" value="36.6"
+                       oninput="syncSliderFloat('temperature','temp-val','temp-flag',36,37.8); updatePreview()">
+              </div>
+
+              <!-- Cardiac flag -->
+              <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none;border-top:1px solid var(--line);padding-top:14px;">
+                <input type="checkbox" id="cardiacFlag" name="cardiacFlag" value="true"
+                       style="width:17px;height:17px;accent-color:var(--esi1);"
+                       onchange="updatePreview()">
+                Cardiac red-flag — chest pain / suspected ACS
+              </label>
+            </div>
+          </div>
+
+          <!-- ── LIVE PREVIEW COLUMN ── -->
+          <div id="intake-preview" style="position:sticky;top:90px;display:flex;flex-direction:column;gap:16px;min-width:0;">
+
+            <!-- ESI + score card -->
+            <div id="preview-card"
+                 style="background:linear-gradient(150deg,var(--esi4soft),var(--panel) 60%);border:1px solid var(--line2);border-radius:16px;padding:22px;overflow:hidden;">
+              <div style="font-size:10.5px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;">Live triage estimate</div>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:16px;">
+                <div id="esi-badge"
+                     style="width:78px;height:78px;flex:none;border-radius:18px;background:var(--esi4);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 24px var(--esi4soft);">
+                  <span style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;opacity:0.85;">ESI</span>
+                  <span id="esi-num" style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:38px;line-height:1;">4</span>
+                </div>
+                <div>
+                  <div id="esi-label" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;color:var(--esi4);line-height:1.1;">Less urgent</div>
+                  <div id="esi-hint" style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.35;">One resource likely. Can wait safely.</div>
+                </div>
+              </div>
+              <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;">
+                  <span style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Priority score</span>
+                  <span id="score-num" style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:30px;color:var(--esi4);line-height:1;">12</span>
+                </div>
+                <div style="height:7px;border-radius:4px;background:var(--bg2);margin-top:10px;overflow:hidden;border:1px solid var(--line);">
+                  <div id="score-bar" style="height:100%;width:12%;background:var(--esi4);border-radius:4px;transition:width 0.25s ease,background 0.25s ease;"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.4;">Inserted into the max-heap at this value · re-sorts the live queue instantly.</div>
+              </div>
+            </div>
+
+            <!-- Why this score + submit -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+              <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:12px;">Why this score</div>
+              <div id="factors-list" style="display:flex;flex-direction:column;gap:9px;">
+                <div style="font-size:12px;color:var(--text3);">Vitals within normal limits — no acuity escalation.</div>
+              </div>
+              <button type="submit"
+                      style="all:unset;box-sizing:border-box;cursor:pointer;width:100%;text-align:center;
+                             margin-top:16px;background:var(--brand);color:#06231E;font-weight:700;
+                             font-size:13.5px;padding:12px;border-radius:10px;font-family:inherit;">
+                Add to priority queue
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script>
+  (function tick() {
+    const el = document.getElementById('apx-clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12: false});
+    setTimeout(tick, 1000);
+  })();
+
+  // ESI color palette
+  const ESI_COLORS = ['#FF3B4E','#FF8A33','#FFC53D','#38C172','#4D9DE0'];
+  const ESI_SOFT   = ['rgba(255,59,78,0.13)','rgba(255,138,51,0.13)','rgba(255,197,61,0.13)','rgba(56,193,114,0.13)','rgba(77,157,224,0.13)'];
+  const ESI_CSS    = ['var(--esi1)','var(--esi2)','var(--esi3)','var(--esi4)','var(--esi5)'];
+  const ESI_LABELS = ['Resuscitation','Emergent','Urgent','Less urgent','Non-urgent'];
+  const ESI_HINTS  = [
+    'Immediate, life-saving intervention required.',
+    'High risk — must not wait. See within 10 min.',
+    'Stable but needs multiple resources.',
+    'One resource likely. Can wait safely.',
+    'No emergent resources anticipated.'
+  ];
+
+  function val(id) { return Number(document.getElementById(id).value); }
+
+  function syncSlider(inputId, displayId, flagId, lo, hi) {
+    const v = val(inputId);
+    const el = document.getElementById(displayId);
+    const flag = document.getElementById(flagId);
+    el.textContent = v;
+    const out = v < lo || v > hi;
+    const crit = v < lo * 0.92 || v > hi * 1.12;
+    el.style.color = out ? (crit ? 'var(--esi1)' : 'var(--esi2)') : 'inherit';
+    flag.textContent = out ? (v > hi ? 'high' : 'low') : '';
+    flag.style.color = out ? (crit ? 'var(--esi1)' : 'var(--esi2)') : 'var(--esi2)';
+    flag.style.opacity = out ? '1' : '0';
+  }
+
+  function syncSliderFloat(inputId, displayId, flagId, lo, hi) {
+    const v = Number(document.getElementById(inputId).value);
+    const el = document.getElementById(displayId);
+    const flag = document.getElementById(flagId);
+    el.textContent = v.toFixed(1);
+    const out = v < lo || v > hi;
+    el.style.color = out ? 'var(--esi2)' : 'inherit';
+    flag.textContent = out ? (v > hi ? 'high' : 'low') : '';
+    flag.style.opacity = out ? '1' : '0';
+  }
+
+  function computeScore() {
+    const hr = val('heartRate'), sbp = val('systolicBp'), spo2 = val('spo2');
+    const rr = val('respiratoryRate'), temp = Number(document.getElementById('temperature').value);
+    const cardiac = document.getElementById('cardiacFlag').checked;
+    let score = 12;
+    const factors = [];
+    const add = (cond, pts, text) => { if (cond) { score += pts; factors.push({pts, text}); } };
+    add(spo2 < 90,  28, `SpO₂ ${spo2}% — hypoxia`);
+    add(spo2 >= 90 && spo2 < 94, 12, `SpO₂ ${spo2}% — borderline`);
+    add(sbp < 90,   26, `Systolic ${sbp} — hypotension`);
+    add(sbp >= 180, 14, `Systolic ${sbp} — severe HTN`);
+    add(hr > 130,   22, `HR ${hr} — marked tachycardia`);
+    add(hr >= 110 && hr <= 130, 11, `HR ${hr} — tachycardia`);
+    add(hr < 50,    22, `HR ${hr} — bradycardia`);
+    add(rr > 24,    14, `RR ${rr} — tachypnoea`);
+    add(temp >= 38.5, 9, `Temp ${temp.toFixed(1)}° — fever`);
+    add(cardiac,    24, 'Cardiac red-flag — possible ACS');
+    return {score: Math.min(99, score), factors};
+  }
+
+  function updatePreview() {
+    const {score, factors} = computeScore();
+    let esi;
+    if      (score >= 85) esi = 0;
+    else if (score >= 60) esi = 1;
+    else if (score >= 38) esi = 2;
+    else if (score >= 20) esi = 3;
+    else                  esi = 4;
+
+    const color = ESI_COLORS[esi];
+    const cssVar = ESI_CSS[esi];
+    const soft = ESI_SOFT[esi];
+
+    document.getElementById('esi-num').textContent  = esi + 1;
+    document.getElementById('esi-label').textContent = ESI_LABELS[esi];
+    document.getElementById('esi-label').style.color = cssVar;
+    document.getElementById('esi-hint').textContent  = ESI_HINTS[esi];
+    document.getElementById('score-num').textContent = score;
+    document.getElementById('score-num').style.color = cssVar;
+    document.getElementById('score-bar').style.width      = score + '%';
+    document.getElementById('score-bar').style.background = cssVar;
+    document.getElementById('esi-badge').style.background = cssVar;
+    document.getElementById('esi-badge').style.boxShadow  = `0 8px 24px ${soft}`;
+    document.getElementById('preview-card').style.background =
+      `linear-gradient(150deg,${soft},var(--panel) 60%)`;
+
+    const list = document.getElementById('factors-list');
+    if (factors.length === 0) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--text3);">Vitals within normal limits — no acuity escalation.</div>';
+    } else {
+      list.innerHTML = factors.map(f => {
+        const fColor = f.pts >= 22 ? 'var(--esi1)' : f.pts >= 12 ? 'var(--esi2)' : 'var(--esi3)';
+        return `<div style="display:flex;align-items:center;gap:10px;">
+          <span style="width:7px;height:7px;border-radius:2px;background:${fColor};flex:none;"></span>
+          <span style="font-size:12.5px;color:var(--text2);flex:1;">${f.text}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:${fColor};">+${f.pts}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  function setSex(v) {
+    document.getElementById('sex').value = v;
+    document.getElementById('btn-m').classList.toggle('active', v === 'M');
+    document.getElementById('btn-f').classList.toggle('active', v === 'F');
+  }
+
+  // Init
+  setSex('M');
+  updatePreview();
+</script>
+</body>
+</html>

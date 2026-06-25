@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--/* ── SHARED SHELL: sidebar + header wrapper ── */-->
+<div th:fragment="shell(screen, title, subtitle, content)">
+  <div data-apx-theme="dark"
+       style="display:flex; min-height:100vh; width:100%; background:var(--bg); color:var(--text);
+              font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased;">
+
+    <!-- SIDEBAR -->
+    <aside style="width:236px; flex:none; background:var(--bg2); border-right:1px solid var(--line);
+                  display:flex; flex-direction:column; position:sticky; top:0; height:100vh;">
+
+      <!-- Logo -->
+      <div style="padding:22px 20px 18px; display:flex; align-items:center; gap:11px; border-bottom:1px solid var(--line);">
+        <div style="width:38px;height:38px;flex:none;border-radius:9px;
+                    background:linear-gradient(150deg,var(--panel2),var(--panel));
+                    border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;
+                    box-shadow:0 0 0 1px rgba(45,226,197,0.08),0 6px 16px rgba(0,0,0,0.35);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <polyline points="1,13 6,13 8,13 10,5 13,19 15,10 17,13 23,13"
+                      stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div style="line-height:1.05;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.01em;">ApexPulse</div>
+          <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);font-weight:600;margin-top:2px;">Triage OS</div>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav style="padding:14px 12px; display:flex; flex-direction:column; gap:3px;">
+        <div style="font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:6px 10px 8px;">Workspace</div>
+
+        <a th:href="@{/}" th:style="${screen == 'command'} ?
+             'all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:600;color:var(--text);background:var(--panel);text-decoration:none;' :
+             'all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--text2);text-decoration:none;'">
+          <span th:style="${screen == 'command'} ? 'width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;' : 'width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;opacity:0;'"></span>
+          Command Center
+        </a>
+
+        <a th:href="@{/intake}" th:style="${screen == 'intake'} ?
+             'all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:600;color:var(--text);background:var(--panel);text-decoration:none;' :
+             'all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--text2);text-decoration:none;'">
+          <span th:style="${screen == 'intake'} ? 'width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;' : 'width:7px;height:7px;border-radius:2px;background:var(--brand);flex:none;opacity:0;'"></span>
+          Patient Intake
+        </a>
+      </nav>
+
+      <!-- Footer status -->
+      <div style="margin-top:auto; padding:14px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:2px 4px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--esi4);box-shadow:0 0 8px var(--esi4);"></span>
+          <span style="font-size:11px;color:var(--text3);">Live · Byte2Beat dataset</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main style="flex:1; min-width:0; display:flex; flex-direction:column;">
+
+      <!-- Top header bar -->
+      <header style="height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
+                     justify-content:space-between;padding:0 28px;background:var(--bg2);position:sticky;top:0;z-index:5;">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;letter-spacing:-0.01em;"
+               th:text="${title}">Command Center</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:1px;" th:text="${subtitle}">Live triage queue</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px;">
+          <div style="text-align:right;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--text);"
+                 id="apx-clock">--:--:--</div>
+            <div style="font-size:11px;color:var(--text3);">Bay 7 · Charge RN</div>
+          </div>
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);
+                      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text2);">AD</div>
+        </div>
+      </header>
+
+      <!-- Page content injected here -->
+      <div style="flex:1; overflow:auto; padding:26px 28px 60px;">
+        <th:block th:replace="${content}" />
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function tick() {
+      const el = document.getElementById('apx-clock');
+      if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+      setTimeout(tick, 1000);
+    })();
+  </script>
+</div>
+
+</body>
+</html>
