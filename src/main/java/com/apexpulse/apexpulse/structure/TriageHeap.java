@@ -33,9 +33,15 @@ public class TriageHeap {
 
     public List<Patient> drainSorted() {
         // Return a priority-sorted snapshot without destroying the heap
-        List<Patient> snapshot = new ArrayList<>(heap);
-        snapshot.sort((a, b) -> Integer.compare(b.getPriorityScore(), a.getPriorityScore()));
-        return snapshot;
+        ArrayList<Patient> backup = new ArrayList<>(this.heap);
+        List<Patient> sortedList = new ArrayList<>();
+
+        while (!this.heap.isEmpty()) {
+            sortedList.add(this.extractMax());
+        }
+
+        this.heap.addAll(backup);
+        return sortedList;
     }
 
     private void percolateUp(int i) {
