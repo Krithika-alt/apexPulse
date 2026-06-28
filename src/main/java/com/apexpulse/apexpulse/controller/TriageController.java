@@ -23,6 +23,7 @@ public class TriageController {
 
     @GetMapping("/")
     public String commandCenter(Model model) {
+        heap.rebuildHeap();
         List<Patient> queue = heap.drainSorted();
         long critical = queue.stream().filter(p -> p.getEsi() <= 2).count();
         long waitSum  = queue.stream().mapToLong(p ->
