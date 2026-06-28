@@ -9,47 +9,53 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Controller
 public class TriageController {
 
-    private final TriageHeap heap = new TriageHeap();
+    // Removed 'final' so we can cleanly destroy and rebuild the heap to prevent ghosts
+    private TriageHeap heap = new TriageHeap();
+    private final int bedsTotal = 563;
+    private int bedsFree = 25;
 
     public TriageController() {
         seedMockData();
     }
 
     @GetMapping("/")
-    public String commandCenter(Model model) {
-        java.util.Random rand = new java.util.Random();
-        for (Patient p : heap.drainSorted()) {
-            // Only fluctuate stable patients so critical ones don't accidentally drop safely
-            if (p.getPriorityScore() < 85) {
-                int hrChange = rand.nextInt(5) - 2; // fluctuates by -2 to +2 bpm
-                int bpChange = rand.nextInt(7) - 3; // fluctuates by -3 to +3 mmHg
+    public synchronized String commandCenter(Model model) {
+        // 1. This just READS the list, it doesn't empty the heap!
+        List<Patient> renderList = heap.drainSorted();
 
-                p.setHeartRate(p.getHeartRate() + hrChange);
-                p.setSystolicBp(p.getSystolicBp() + bpChange);
+        // 2. Modify their vitals in place
+        java.util.Random rand = new java.util.Random();
+        for (Patient p : renderList) {
+            if (p.getPriorityScore() < 85) {
+                p.setHeartRate(p.getHeartRate() + (rand.nextInt(5) - 2));
+                p.setSystolicBp(p.getSystolicBp() + (rand.nextInt(7) - 3));
             }
         }
-        heap.rebuildHeap();
-        List<Patient> queue = heap.drainSorted();
-        long critical = queue.stream().filter(p -> p.getEsi() <= 2).count();
-        long waitSum  = queue.stream().mapToLong(p ->
-            (Instant.now().getEpochSecond() - p.getArrivedAt().getEpochSecond()) / 60
-        ).sum();
-        long medianWait = queue.isEmpty() ? 0 : waitSum / queue.size();
 
-        model.addAttribute("queue",       queue);
-        model.addAttribute("queueSize",   queue.size());
-        model.addAttribute("critical",    critical);
-        model.addAttribute("medianWait",  medianWait);
-        model.addAttribute("bedsTotal",   22);
-        model.addAttribute("bedsFree",    4);
-        model.addAttribute("nextUp",      queue.isEmpty() ? null : queue.get(0));
-        model.addAttribute("screen",      "command");
+        // 3. NO MORE INSERT LOOPS! Just tell the heap to re-balance itself.
+        heap.rebuildHeap();
+
+        // 4. Calculate metrics safely
+        long critical = renderList.stream().filter(p -> p.getEsi() <= 2).count();
+        long waitSum = renderList.stream().mapToLong(p ->
+                (Instant.now().getEpochSecond() - p.getArrivedAt().getEpochSecond()) / 60
+        ).sum();
+        long medianWait = renderList.isEmpty() ? 0 : waitSum / renderList.size();
+
+        model.addAttribute("queue", renderList);
+        model.addAttribute("queueSize", renderList.size());
+        model.addAttribute("critical", critical);
+        model.addAttribute("medianWait", medianWait);
+        model.addAttribute("bedsTotal", bedsTotal);
+        model.addAttribute("bedsFree", this.bedsFree);
+        model.addAttribute("nextUp", renderList.isEmpty() ? null : renderList.get(0));
+        model.addAttribute("screen", "command");
+
         return "command";
     }
 
@@ -61,16 +67,70 @@ public class TriageController {
     }
 
     @PostMapping("/intake")
-    public String admitPatient(@ModelAttribute Patient patient) {
+    public synchronized String admitPatient(@ModelAttribute Patient patient) {
         patient.setArrivedAt(Instant.now());
         heap.insert(patient);
         return "redirect:/";
     }
 
+    @PostMapping("/api/triage/allocate")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public synchronized org.springframework.http.ResponseEntity<?> allocatePatientBed(
+            @org.springframework.web.bind.annotation.RequestParam java.util.Map<String, String> payload) {
+        try {
+            String patientName = payload.get("patientName");
+            String bedName = payload.get("bedName");
+
+            List<Patient> allPatients = heap.drainSorted();
+
+            // Remove the target patient from our temporary list
+            boolean removed = allPatients.removeIf(patient ->
+                    patient.getName().trim().equalsIgnoreCase(patientName.trim())
+            );
+
+            // THE NUCLEAR OPTION: Completely destroy the old heap and build a fresh one
+            // so duplication is literally impossible.
+            this.heap = new TriageHeap();
+            for (Patient remainingPatient : allPatients) {
+                this.heap.insert(remainingPatient);
+            }
+
+            if (this.bedsFree > 0 && bedName != null && !bedName.trim().equalsIgnoreCase("Waiting Room")) {
+                this.bedsFree--;
+            }
+
+            return org.springframework.http.ResponseEntity.ok().body(java.util.Map.of("status", "success", "message", "Allocation confirmed"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 30000)
+    public synchronized void runWaitTimeDeteriorationEngine() {
+        try {
+            List<Patient> activeQueue = heap.drainSorted();
+            if (activeQueue.isEmpty()) return;
+
+            for (Patient p : activeQueue) {
+                if (p.getPriorityScore() < 100) {
+                    p.setHeartRate(p.getHeartRate() + 1);
+                }
+            }
+
+            // NO MORE INSERT LOOPS HERE EITHER!
+            heap.rebuildHeap();
+
+        } catch (Exception e) {
+            System.out.println("Scheduler pass skipped.");
+        }
+    }
+
     private void seedMockData() {
+        // Destroy any ghost data left in memory from a previous launch
+        this.heap = new TriageHeap();
         long now = Instant.now().getEpochSecond();
 
-        // Keep her original 8 high-fidelity clinical corner-cases
         heap.insert(new Patient("Okafor, Daniel",   "M", 61, "Chest pain, diaphoresis",        128, 145,  92, 89, 26, 37.0, true,  Instant.ofEpochSecond(now - 240)));
         heap.insert(new Patient("Reyes, Marisol",   "F", 54, "Unresponsive, ?cardiac arrest",   42, 70,  40, 84,  8, 36.1, true,  Instant.ofEpochSecond(now - 120)));
         heap.insert(new Patient("Whitlock, James",  "M", 73, "SOB, ?CHF exacerbation",         118, 162, 98, 92, 25, 36.8, false, Instant.ofEpochSecond(now - 660)));
@@ -80,12 +140,11 @@ public class TriageController {
         heap.insert(new Patient("Sundqvist, Lena",  "F", 31, "Laceration, left forearm",        78, 118, 76, 99, 15, 36.6, false, Instant.ofEpochSecond(now - 4080)));
         heap.insert(new Patient("Hassan, Omar",     "M", 24, "Med refill, stable",              70, 120, 78, 100, 14, 36.5, false, Instant.ofEpochSecond(now - 6000)));
 
-        // Programmatically generate 30 more randomized clinical profiles to load test your Max-Heap sorting!
         String[] firstNames = {"John", "Emma", "Robert", "Sophia", "William", "Olivia", "David", "Ava", "Joseph", "Mia"};
         String[] lastNames = {"Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Wilson"};
         String[] complaints = {"Shortness of breath", "Dizziness", "Mild chest tightness", "Palpitations", "Fatigue", "Nausea"};
 
-        java.util.Random rand = new java.util.Random(42); // Seeded for strict reproducibility rules
+        java.util.Random rand = new java.util.Random(42);
 
         for (int i = 0; i < 30; i++) {
             String randomName = lastNames[rand.nextInt(lastNames.length)] + ", " + firstNames[rand.nextInt(firstNames.length)];
@@ -93,19 +152,17 @@ public class TriageController {
             int randomAge = 18 + rand.nextInt(70);
             String randomComplaint = complaints[rand.nextInt(complaints.length)];
 
-            // Generate varying distributions of medical vitals
-            int hr = 60 + rand.nextInt(80);          // 60 - 140 bpm
-            int sbp = 100 + rand.nextInt(90);        // 100 - 190 mmHg
-            int dbp = 60 + rand.nextInt(40);         // 60 - 100 mmHg
-            int o2 = 88 + rand.nextInt(13);          // 88 - 100% SpO2
-            int rr = 12 + rand.nextInt(15);          // 12 - 27 breaths/min
-            double temp = 36.5 + (rand.nextDouble() * 2.5); // 36.5 - 39.0 C
-            boolean cardiac = rand.nextDouble() > 0.85; // 15% chance of severe acute flag
+            int hr = 60 + rand.nextInt(80);
+            int sbp = 100 + rand.nextInt(90);
+            int dbp = 60 + rand.nextInt(40);
+            int o2 = 88 + rand.nextInt(13);
+            int rr = 12 + rand.nextInt(15);
+            double temp = 36.5 + (rand.nextDouble() * 2.5);
+            boolean cardiac = rand.nextDouble() > 0.85;
 
-            // Randomize arrival timestamp spanning the past 3 hours
             long randomTimeOffset = rand.nextInt(10800);
 
-            heap.insert(new Patient(
+            this.heap.insert(new Patient(
                     randomName, randomSex, randomAge, randomComplaint,
                     hr, sbp, dbp, o2, rr, temp, cardiac,
                     Instant.ofEpochSecond(now - randomTimeOffset)
