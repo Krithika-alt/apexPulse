@@ -23,6 +23,17 @@ public class TriageController {
 
     @GetMapping("/")
     public String commandCenter(Model model) {
+        java.util.Random rand = new java.util.Random();
+        for (Patient p : heap.drainSorted()) {
+            // Only fluctuate stable patients so critical ones don't accidentally drop safely
+            if (p.getPriorityScore() < 85) {
+                int hrChange = rand.nextInt(5) - 2; // fluctuates by -2 to +2 bpm
+                int bpChange = rand.nextInt(7) - 3; // fluctuates by -3 to +3 mmHg
+
+                p.setHeartRate(p.getHeartRate() + hrChange);
+                p.setSystolicBp(p.getSystolicBp() + bpChange);
+            }
+        }
         heap.rebuildHeap();
         List<Patient> queue = heap.drainSorted();
         long critical = queue.stream().filter(p -> p.getEsi() <= 2).count();
