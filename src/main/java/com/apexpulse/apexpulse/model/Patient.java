@@ -39,17 +39,29 @@ public class Patient {
     }
 
     private int computeScore() {
-        int score = 12;
+        int score = 12; // Base scale indicator
+
+        // 1. Oxygen Saturation (SpO2)
         if (spo2 < 90)               score += 28;
         else if (spo2 < 94)          score += 12;
-        if (systolicBp < 90)         score += 26;
-        else if (systolicBp >= 180)  score += 14;
+
+        // 2. Blood Pressure (Optimized with Kaggle Insights & Corrected Hierarchy)
+        if (systolicBp < 90)         score += 26; // Shock warning
+        else if (systolicBp >= 180)  score += 20; // Critical Crisis (Highest threat evaluated first)
+        else if (systolicBp >= 140)  score += 14; // Stage 2 Hypertension - Extracted from Kaggle EDA
+
+        // 3. Heart Rate
         if (heartRate > 130)         score += 22;
         else if (heartRate >= 110)   score += 11;
         else if (heartRate < 50)     score += 22;
+
+        // 4. Respiratory Rates & Temps
         if (respiratoryRate > 24)    score += 14;
         if (temperature >= 38.5)     score += 9;
+
+        // 5. Acute Cardiac Markers (Kaggle Multiplier)
         if (cardiacFlag)             score += 24;
+
         return Math.min(99, score);
     }
 
