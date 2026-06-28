@@ -83,6 +83,19 @@ public class Patient {
         };
     }
 
+    public double getWaitProgressPercentage() {
+        long mins = (Instant.now().getEpochSecond() - arrivedAt.getEpochSecond()) / 60;
+        long limit = switch (getEsi()) {
+            case 1 -> 1;
+            case 2 -> 10;
+            case 3 -> 30;
+            case 4 -> 60;
+            default -> 120;
+        };
+        double percentage = ((double) mins / limit) * 100;
+        return Math.min(100.0, percentage); // Cap at 100%
+    }
+
     public String getBp() { return systolicBp + "/" + diastolicBp; }
 
     public String getWaitLabel() {
