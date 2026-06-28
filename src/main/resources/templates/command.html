@@ -23,7 +23,119 @@
     ::-webkit-scrollbar { width:10px; height:10px; }
     ::-webkit-scrollbar-thumb { background:var(--line2); border-radius:6px; }
     ::-webkit-scrollbar-track { background:transparent; }
-    tr:hover td { background: var(--panel2); }
+
+    /* Advanced Micro-Interactions */
+    tr {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    tr:hover td {
+      background: #1B2433 !important;
+      color: #E8EDF6;
+    }
+
+    /* Pulsing Ambient Telemetry Glow */
+    @keyframes telemetryPulse {
+      0% { box-shadow: inset 4px 0 0 0 #FF3B4E, 0 0 4px rgba(255,59,78,0); }
+      50% { box-shadow: inset 4px 0 0 0 #FF3B4E, 0 0 14px rgba(255,59,78,0.25); background: rgba(255,59,78,0.03); }
+      100% { box-shadow: inset 4px 0 0 0 #FF3B4E, 0 0 4px rgba(255,59,78,0); }
+    }
+
+    /* Action Button Styles */
+    .btn-action {
+      all: unset;
+      box-sizing: border-box;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'IBM Plex Sans', sans-serif;
+      transition: all 0.15s ease;
+      background: #0B0F17;
+      border: 1px solid #243049;
+      color: #9AA7BE;
+    }
+    .btn-action:hover {
+      border-color: #2DE2C5;
+      color: #2DE2C5;
+      background: rgba(45,226,197,0.12);
+    }
+    /* Slide-out Clinical Control Panel */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(7, 10, 16, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      justify-content: flex-end;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-panel {
+      width: 440px;
+      background: var(--bg2);
+      border-left: 1px solid var(--line);
+      height: 100%;
+      padding: 30px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+      /* Font Standardization */
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .modal-overlay.active .modal-panel {
+      transform: translateX(0);
+    }
+    .select-bed {
+      width: 100%;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .select-bed:focus {
+      border-color: var(--brand);
+    }
+
+    /* New Feature Component Styles */
+    .clinical-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+    }
+    .trend-pill {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .trend-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -224,55 +336,60 @@
                 </tr>
               </thead>
               <tbody>
-                <tr th:each="p : ${queue}" style="border-top:1px solid var(--line);">
+              <!-- 1. Dynamically injects the pulsing class if priority is high -->
+              <tr th:each="p : ${queue}"
+                  th:style="${p.priorityScore >= 85} ? 'border-top:1px solid var(--line); animation: telemetryPulse 2.5s infinite ease-in-out !important;' : 'border-top:1px solid var(--line);'"
+                  style="border-top:1px solid var(--line); transition: all 0.2s ease;">
 
-                  <!-- ESI badge -->
-                  <td style="padding:0;">
-                    <div th:style="'display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;border-left:4px solid ' + ${p.esiCssVar} + ';'"
-                         style="display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;border-left:4px solid var(--esi1);">
+                <!-- ESI badge -->
+                <td style="padding:0;">
+                  <div th:style="'display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px; border-left:4px solid ' + ${p.esiCssVar} + ';'"
+                       style="display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;">
                       <span th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:13px;color:#fff;background:' + ${p.esiCssVar} + ';width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;'"
-                            style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;color:#fff;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;"
                             th:text="${p.esi}">1</span>
-                      <span style="font-size:10.5px;color:var(--text3);line-height:1.1;" th:text="${p.esiLabel}">—</span>
-                    </div>
-                  </td>
+                    <span style="font-size:10.5px;color:var(--text3);line-height:1.1;" th:text="${p.esiLabel}">—</span>
+                  </div>
+                </td>
 
-                  <!-- Name / complaint -->
-                  <td style="padding:10px 14px;">
-                    <div style="font-weight:600;font-size:13px;" th:text="${p.name}">—</div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:2px;"
-                         th:text="${p.demographics} + ' · ' + ${p.complaint}">—</div>
-                  </td>
+                <!-- Name / complaint -->
+                <td style="padding:10px 14px;">
+                  <div style="font-weight:600;font-size:13px;" th:text="${p.name}">—</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:2px;"
+                       th:text="${p.demographics} + ' · ' + ${p.complaint}">—</div>
+                </td>
 
-                  <!-- Vitals -->
-                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.hrColor} + ';'"
-                      style="padding:10px 8px;text-align:center;"
-                      th:text="${p.heartRate}">—</td>
+                <!-- Vitals -->
+                <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.hrColor} + ';'"
+                    th:text="${p.heartRate}">—</td>
 
-                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:500;font-size:12.5px;color:' + ${p.bpColor} + ';'"
-                      style="padding:10px 8px;text-align:center;"
-                      th:text="${p.bp}">—</td>
+                <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:500;font-size:12.5px;color:' + ${p.bpColor} + ';'"
+                    th:text="${p.bp}">—</td>
 
-                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.spo2Color} + ';'"
-                      style="padding:10px 8px;text-align:center;"
-                      th:text="${p.spo2}">—</td>
+                <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.spo2Color} + ';'"
+                    th:text="${p.spo2}">—</td>
 
-                  <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.rrColor} + ';'"
-                      style="padding:10px 8px;text-align:center;"
-                      th:text="${p.respiratoryRate}">—</td>
+                <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.rrColor} + ';'"
+                    th:text="${p.respiratoryRate}">—</td>
 
-                  <td style="padding:10px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:12.5px;color:var(--text2);"
-                      th:text="${#numbers.formatDecimal(p.temperature,1,1)}">—</td>
+                <td style="padding:10px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:12.5px;color:var(--text2);"
+                    th:text="${#numbers.formatDecimal(p.temperature,1,1)}">—</td>
 
-                  <td style="padding:10px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text2);"
-                      th:text="${p.waitLabel}">—</td>
+                <td style="padding:10px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text2);"
+                    th:text="${p.waitLabel}">—</td>
 
-                  <!-- Score -->
-                  <td style="padding:10px 18px 10px 8px;text-align:right;">
+                <!-- Score -->
+                <td style="padding:10px 14px 10px 8px;text-align:right;">
                     <span th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:17px;color:' + ${p.esiCssVar} + ';'"
-                          style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px;"
                           th:text="${p.priorityScore}">0</span>
-                  </td>
+                </td>
+
+                <!-- ⚡ NEW INTERACTIVE QUICK-ACTION CONTROL CELLS -->
+                <td style="padding:10px 20px 10px 10px; text-align:right; width:120px;">
+                  <button class="btn-action btn-triage-assign" th:data-patient-name="${p.name}">
+                    Assign Bed
+                  </button>
+                </td>
+
                 </tr>
               </tbody>
             </table>
@@ -284,12 +401,153 @@
   </main>
 </div>
 
+<div class="modal-overlay" id="triage-modal" data-apx-theme="dark" style="color: #E8EDF6;">
+  <div class="modal-panel">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:15px;">
+      <div>
+        <h3 style="margin:0; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.01em;" id="modal-patient-name">Patient Details</h3>
+        <span style="font-size:12px; color:var(--text3); font-family:'IBM Plex Mono', monospace; font-weight:500;" id="modal-patient-meta">Demographics</span>
+      </div>
+      <button class="btn-action" onclick="closeTriageModal()" style="font-family:'IBM Plex Sans', sans-serif;">✕ Close</button>
+    </div>
+
+    <!-- FEATURE 1: CLINICAL RISK FLAGS -->
+    <div>
+      <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">Clinical Risk Factors</h4>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <span class="clinical-tag" style="background:rgba(255,59,78,0.15); color:var(--esi1);">Fall Risk</span>
+        <span class="clinical-tag" style="background:rgba(56,193,114,0.15); color:var(--esi4);">NKA</span>
+        <span class="clinical-tag" style="background:rgba(255,197,61,0.15); color:var(--esi3);">NPO (Fasting)</span>
+      </div>
+    </div>
+
+    <!-- Active Presentation -->
+    <div>
+      <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">Chief Complaint</h4>
+      <div style="background:var(--panel); padding:14px; border-radius:8px; font-size:13.5px; line-height:1.4; border:1px solid var(--line); color:var(--text);" id="modal-patient-complaint">
+        Complaint log missing.
+      </div>
+    </div>
+
+    <!-- FEATURE 2: HISTORICAL VITALS TREND SNAPSHOT -->
+    <div>
+      <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">2-Hour Telemetry Trends</h4>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+        <div class="trend-pill">
+          <div style="font-size:9px; color:var(--text3); font-weight:600; text-transform:uppercase;">HR Delta</div>
+          <div class="trend-val" style="color:var(--esi1);">+14 bpm ↑</div>
+        </div>
+        <div class="trend-pill">
+          <div style="font-size:9px; color:var(--text3); font-weight:600; text-transform:uppercase;">SpO₂ Stability</div>
+          <div class="trend-val" style="color:var(--esi4);">98% (Stable)</div>
+        </div>
+        <div class="trend-pill">
+          <div style="font-size:9px; color:var(--text3); font-weight:600; text-transform:uppercase;">MAP</div>
+          <div class="trend-val" style="color:var(--text2);">102 mmHg</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Allocation Form Controls -->
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:20px;">
+      <label style="font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); font-weight:600; letter-spacing:0.05em;">Assign Trauma Bay / ER Bed</label>
+      <select class="select-bed" id="bed-selector">
+        <option value="">-- Select Available Allocation --</option>
+        <option value="Bay 1">Bay 1 (Critical Care / Resus)</option>
+        <option value="Bay 2">Bay 2 (Trauma)</option>
+        <option value="Bed 12">Bed 12 (Acute Care)</option>
+        <option value="Bed 14">Bed 14 (Acute Care)</option>
+        <option value="Waiting Room">Discharge to Sub-Waiting</option>
+      </select>
+
+      <button class="btn-action" style="background:var(--brand); color:#0B0F17; font-family:'IBM Plex Sans', sans-serif; font-weight:700; font-size:13.5px; text-align:center; padding:14px; border:none; margin-top:8px; border-radius:8px;" onclick="submitBedAllocation()">
+        Confirm Clinical Allocation
+      </button>
+    </div>
+  </div>
+</div>
+
+
 <script>
+  // 1. Single unified running telemetry clock
   (function tick() {
     const el = document.getElementById('apx-clock');
     if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12: false});
     setTimeout(tick, 1000);
   })();
+
+  // 2. Clear global variable to track the active selection state
+  window.activePatientName = "";
+
+  // 3. Wait for the DOM layout to completely register before binding clicks
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("ApexPulse tracking listeners successfully initialized.");
+
+    document.querySelectorAll('.btn-triage-assign').forEach(button => {
+      button.addEventListener('click', (e) => {
+        // Force capture the patient name attribute rule
+        window.activePatientName = e.target.getAttribute('data-patient-name');
+        console.log("Button clicked for patient: " + window.activePatientName);
+
+        const row = e.target.closest('tr');
+        const infoSubText = row.querySelector('td:nth-child(2) div:nth-child(2)').textContent;
+
+        const parts = infoSubText.split('·').map(p => p.trim());
+        let demographics = parts[0];
+        if (parts.length > 2) {
+          demographics += ' · ' + parts[1];
+        }
+        const medicalComplaint = parts[parts.length - 1];
+
+        document.getElementById('modal-patient-name').textContent = window.activePatientName;
+        document.getElementById('modal-patient-meta').textContent = demographics;
+        document.getElementById('modal-patient-complaint').textContent = "Chief Complaint: " + medicalComplaint;
+
+        document.getElementById('triage-modal').classList.add('active');
+      });
+    });
+  });
+
+  function closeTriageModal() {
+    document.getElementById('triage-modal').classList.remove('active');
+  }
+
+  // 4. The network pipeline trigger
+  async function submitBedAllocation() {
+    const selectedBed = document.getElementById('bed-selector').value;
+    if(!selectedBed) {
+      alert('Please designate an active emergency bay allocation before routing.');
+      return;
+    }
+
+    console.log("Sending network payload for: " + window.activePatientName + " to location: " + selectedBed);
+
+    const formData = new URLSearchParams();
+    formData.append('patientName', window.activePatientName);
+    formData.append('bedName', selectedBed);
+
+    try {
+      const response = await fetch('/api/triage/allocate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+      });
+
+      const data = await response.json();
+      console.log("Server response received:", data);
+
+      if (response.ok && data.status === 'success') {
+        window.location.reload();
+      } else {
+        alert('Server Allocation Error: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Network execution failure:', error);
+      alert('Failed to connect to the ApexPulse backend service pipeline.');
+    }
+  }
 </script>
 
 </body>
