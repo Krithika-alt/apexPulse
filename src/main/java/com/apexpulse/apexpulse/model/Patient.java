@@ -121,7 +121,16 @@ public class Patient {
     public double getTemperature()   { return temperature; }
     public boolean isCardiacFlag()   { return cardiacFlag; }
     public Instant getArrivedAt()    { return arrivedAt; }
-    public int getPriorityScore()    { return priorityScore; }
+    public int getPriorityScore() {
+        // 1. Calculate how many minutes the patient has been waiting
+        long minutesWaiting = (Instant.now().getEpochSecond() - arrivedAt.getEpochSecond()) / 60;
+
+        // 2. Add 1 extra priority point for every 10 minutes spent waiting (Ageing Factor)
+        int ageBonus = (int) (minutesWaiting / 10);
+
+        // 3. Return the combined score, capped at 99
+        return Math.min(99, this.priorityScore + ageBonus);
+    }
 
     // Setters
     public void setName(String name)                  { this.name = name; }
