@@ -73,4 +73,12 @@ public class TriageHeap {
         heap.set(a, heap.get(b));
         heap.set(b, tmp);
     }
+
+    public void rebuildHeap() {
+        // Run percolateDown from the middle of the array back to the top to fix any shifting priorities
+        int n = heap.size();
+        for (int i = (n / 2) - 1; i >= 0; i--) {
+            percolateDown(i);
+        }
+    }
 }
