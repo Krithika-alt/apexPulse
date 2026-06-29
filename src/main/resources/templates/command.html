@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; }
@@ -144,7 +147,6 @@
      style="display:flex; min-height:100vh; width:100%; background:var(--bg); color:var(--text);
             font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased;">
 
-  <!-- SIDEBAR -->
   <aside style="width:236px; flex:none; background:var(--bg2); border-right:1px solid var(--line);
                 display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:hidden;">
     <div style="padding:22px 20px 18px; display:flex; align-items:center; gap:11px; border-bottom:1px solid var(--line);">
@@ -186,10 +188,8 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
   <main style="flex:1; min-width:0; display:flex; flex-direction:column;">
 
-    <!-- Header -->
     <header style="height:64px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
                    justify-content:space-between;padding:0 28px;background:var(--bg2);position:sticky;top:0;z-index:5;">
       <div>
@@ -206,11 +206,9 @@
       </div>
     </header>
 
-    <!-- Content -->
-    <div style="flex:1; overflow:auto; padding:26px 28px 60px;">
+    <div id="dashboard-content" style="flex:1; overflow:auto; padding:26px 28px 60px;">
       <div style="display:flex;flex-direction:column;gap:20px;">
 
-        <!-- ── STAT STRIP ── -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
 
           <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
@@ -225,10 +223,26 @@
                  th:text="${critical}">0</div>
           </div>
 
-          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
-            <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Median wait</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;">
-              <span th:text="${medianWait}">0</span><span style="font-size:14px;color:var(--text3);">m</span>
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px; position:relative; overflow:hidden; display:flex; flex-direction:column; min-height:130px;">
+
+            <div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:var(--brandsoft); border-radius:50%; filter:blur(20px);"></div>
+
+            <div style="padding:15px 17px; z-index:2; position:relative;">
+              <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Median wait</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;">
+                <span th:text="${medianWait}" id="current-median-val">0</span><span style="font-size:14px;color:var(--text3);">m</span>
+              </div>
+              <div style="margin-top:12px; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:9px; background:var(--brand); color:#0B0F17; padding:2px 5px; border-radius:4px; font-weight:700; text-transform:uppercase;">Forecast</span>
+                <span style="font-size:11px; color:var(--text2); font-weight:500;">
+                        1hr proj: <span style="color:var(--brand); font-family:'IBM Plex Mono',monospace; font-weight:600;" th:text="${predictedWait} + 'm'">0m</span>
+                    </span>
+              </div>
+            </div>
+
+            <div id="chart-data-hidden" style="display:none;" th:text="${waitHistory}"></div>
+            <div style="position:absolute; bottom:-5px; left:0; right:0; height:60px; z-index:1;">
+              <canvas id="telemetryChart"></canvas>
             </div>
           </div>
 
@@ -240,16 +254,13 @@
           </div>
         </div>
 
-        <!-- ── NEXT UP HERO ── -->
         <div th:if="${nextUp != null}"
              th:style="'background:linear-gradient(120deg,' + ${nextUp.esiCssVar.replace('var(--esi', 'var(--esi').replace(')', 'soft)')} + ',var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;'"
              style="background:linear-gradient(120deg,var(--esi1soft),var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;">
 
-          <!-- ESI color bar -->
           <div th:style="'position:absolute;left:0;top:0;bottom:0;width:5px;background:' + ${nextUp.esiCssVar} + ';'"
                style="position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--esi1);"></div>
 
-          <!-- Identity -->
           <div style="flex:none;min-width:188px;padding-left:6px;">
             <div th:style="'display:inline-flex;align-items:center;gap:7px;background:' + ${nextUp.esiCssVar} + ';color:#fff;font-weight:700;font-size:10.5px;letter-spacing:0.07em;padding:5px 10px;border-radius:6px;text-transform:uppercase;'"
                  style="display:inline-flex;align-items:center;gap:7px;background:var(--esi1);color:#fff;font-weight:700;font-size:10.5px;letter-spacing:0.07em;padding:5px 10px;border-radius:6px;text-transform:uppercase;">
@@ -265,7 +276,6 @@
             <div style="font-size:12px;color:var(--text3);margin-top:3px;" th:text="${nextUp.esiLabel}">—</div>
           </div>
 
-          <!-- Priority score -->
           <div style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;
                       padding:0 20px;border-left:1px solid var(--line);border-right:1px solid var(--line);">
             <div style="font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);font-weight:600;">Priority</div>
@@ -275,7 +285,6 @@
             <div style="font-size:10.5px;color:var(--text3);margin-top:3px;">heap max</div>
           </div>
 
-          <!-- Vitals grid -->
           <div style="flex:1 1 300px;min-width:0;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-content:center;">
             <div style="background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 8px 10px;text-align:center;">
               <div style="font-size:9.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);font-weight:600;">HR</div>
@@ -314,7 +323,6 @@
           </div>
         </div>
 
-        <!-- ── PRIORITY QUEUE TABLE ── -->
         <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);">
             <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;">Priority Queue</div>
@@ -323,25 +331,23 @@
           <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;min-width:900px;">
               <thead>
-                <tr style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);text-align:left;">
-                  <th style="padding:10px 14px 10px 20px;font-weight:600;">Acuity</th>
-                  <th style="padding:10px 14px;font-weight:600;">Patient</th>
-                  <th style="padding:10px 8px;font-weight:600;text-align:center;">HR</th>
-                  <th style="padding:10px 8px;font-weight:600;text-align:center;">BP</th>
-                  <th style="padding:10px 8px;font-weight:600;text-align:center;">SpO₂</th>
-                  <th style="padding:10px 8px;font-weight:600;text-align:center;">RR</th>
-                  <th style="padding:10px 8px;font-weight:600;text-align:center;">Temp</th>
-                  <th style="padding:10px 12px;font-weight:600;text-align:center;">Wait</th>
-                  <th style="padding:10px 18px 10px 8px;font-weight:600;text-align:right;">Priority</th>
-                </tr>
+              <tr style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);text-align:left;">
+                <th style="padding:10px 14px 10px 20px;font-weight:600;">Acuity</th>
+                <th style="padding:10px 14px;font-weight:600;">Patient</th>
+                <th style="padding:10px 8px;font-weight:600;text-align:center;">HR</th>
+                <th style="padding:10px 8px;font-weight:600;text-align:center;">BP</th>
+                <th style="padding:10px 8px;font-weight:600;text-align:center;">SpO₂</th>
+                <th style="padding:10px 8px;font-weight:600;text-align:center;">RR</th>
+                <th style="padding:10px 8px;font-weight:600;text-align:center;">Temp</th>
+                <th style="padding:10px 12px;font-weight:600;text-align:center;">Wait</th>
+                <th style="padding:10px 18px 10px 8px;font-weight:600;text-align:right;">Priority</th>
+              </tr>
               </thead>
               <tbody>
-              <!-- 1. Dynamically injects the pulsing class if priority is high -->
               <tr th:each="p : ${queue}"
                   th:style="${p.priorityScore >= 85} ? 'border-top:1px solid var(--line); animation: telemetryPulse 2.5s infinite ease-in-out !important;' : 'border-top:1px solid var(--line);'"
                   style="border-top:1px solid var(--line); transition: all 0.2s ease;">
 
-                <!-- ESI badge -->
                 <td style="padding:0;">
                   <div th:style="'display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px; border-left:4px solid ' + ${p.esiCssVar} + ';'"
                        style="display:flex;align-items:center;gap:9px;padding:11px 12px 11px 20px;">
@@ -351,14 +357,12 @@
                   </div>
                 </td>
 
-                <!-- Name / complaint -->
                 <td style="padding:10px 14px;">
                   <div style="font-weight:600;font-size:13px;" th:text="${p.name}">—</div>
                   <div style="font-size:11px;color:var(--text3);margin-top:2px;"
                        th:text="${p.demographics} + ' · ' + ${p.complaint}">—</div>
                 </td>
 
-                <!-- Vitals -->
                 <td th:style="'padding:10px 8px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-weight:600;font-size:14px;color:' + ${p.hrColor} + ';'"
                     th:text="${p.heartRate}">—</td>
 
@@ -377,34 +381,31 @@
                 <td style="padding:10px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text2);"
                     th:text="${p.waitLabel}">—</td>
 
-                <!-- Score -->
                 <td style="padding:10px 14px 10px 8px;text-align:right;">
                     <span th:style="'font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:17px;color:' + ${p.esiCssVar} + ';'"
                           th:text="${p.priorityScore}">0</span>
                 </td>
 
-                <!-- ⚡ NEW INTERACTIVE QUICK-ACTION CONTROL CELLS -->
                 <td style="padding:10px 20px 10px 10px; text-align:right; width:120px;">
-                  <button class="btn-action btn-triage-assign" th:data-patient-name="${p.name}">
+                  <button class="btn-action btn-triage-assign"
+                          th:data-patient-name="${p.name}"
+                          th:data-recommended-bed="${p.recommendedAllocation}">
                     Assign Bed
                   </button>
                 </td>
 
-                </tr>
+              </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-      </div><!-- end content column -->
-    </div><!-- end scrollable area -->
-  </main>
+      </div></div></main>
 </div>
 
 <div class="modal-overlay" id="triage-modal" data-apx-theme="dark" style="color: #E8EDF6;">
   <div class="modal-panel">
 
-    <!-- Header -->
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:15px;">
       <div>
         <h3 style="margin:0; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.01em;" id="modal-patient-name">Patient Details</h3>
@@ -413,7 +414,6 @@
       <button class="btn-action" onclick="closeTriageModal()" style="font-family:'IBM Plex Sans', sans-serif;">✕ Close</button>
     </div>
 
-    <!-- FEATURE 1: CLINICAL RISK FLAGS -->
     <div>
       <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">Clinical Risk Factors</h4>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -423,7 +423,6 @@
       </div>
     </div>
 
-    <!-- Active Presentation -->
     <div>
       <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">Chief Complaint</h4>
       <div style="background:var(--panel); padding:14px; border-radius:8px; font-size:13.5px; line-height:1.4; border:1px solid var(--line); color:var(--text);" id="modal-patient-complaint">
@@ -431,7 +430,6 @@
       </div>
     </div>
 
-    <!-- FEATURE 2: HISTORICAL VITALS TREND SNAPSHOT -->
     <div>
       <h4 style="margin:0 0 8px 0; font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); letter-spacing:0.08em; font-weight:600;">2-Hour Telemetry Trends</h4>
       <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
@@ -450,7 +448,6 @@
       </div>
     </div>
 
-    <!-- Allocation Form Controls -->
     <div style="margin-top:auto; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:20px;">
       <label style="font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); font-weight:600; letter-spacing:0.05em;">Assign Trauma Bay / ER Bed</label>
       <select class="select-bed" id="bed-selector">
@@ -469,26 +466,22 @@
   </div>
 </div>
 
-
 <script>
-  // 1. Single unified running telemetry clock
   (function tick() {
     const el = document.getElementById('apx-clock');
     if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12: false});
     setTimeout(tick, 1000);
   })();
 
-  // 2. Clear global variable to track the active selection state
   window.activePatientName = "";
 
-  // 3. Wait for the DOM layout to completely register before binding clicks
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log("ApexPulse tracking listeners successfully initialized.");
-
+  function bindTriageButtons() {
     document.querySelectorAll('.btn-triage-assign').forEach(button => {
       button.addEventListener('click', (e) => {
-        // Force capture the patient name attribute rule
         window.activePatientName = e.target.getAttribute('data-patient-name');
+
+        const smartRecommendation = e.target.getAttribute('data-recommended-bed');
+
         console.log("Button clicked for patient: " + window.activePatientName);
 
         const row = e.target.closest('tr');
@@ -496,33 +489,89 @@
 
         const parts = infoSubText.split('·').map(p => p.trim());
         let demographics = parts[0];
-        if (parts.length > 2) {
-          demographics += ' · ' + parts[1];
-        }
+        if (parts.length > 2) demographics += ' · ' + parts[1];
         const medicalComplaint = parts[parts.length - 1];
 
         document.getElementById('modal-patient-name').textContent = window.activePatientName;
         document.getElementById('modal-patient-meta').textContent = demographics;
         document.getElementById('modal-patient-complaint').textContent = "Chief Complaint: " + medicalComplaint;
 
+        if (smartRecommendation) {
+          document.getElementById('bed-selector').value = smartRecommendation;
+        }
+
         document.getElementById('triage-modal').classList.add('active');
       });
     });
+  }
+
+  let telemetryChartInstance = null;
+
+  function drawTelemetryGraph() {
+    const canvas = document.getElementById('telemetryChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const rawData = document.getElementById('chart-data-hidden').textContent;
+    let dataPoints = [];
+    if (rawData && rawData !== "[]") {
+      dataPoints = rawData.replace(/[\[\]]/g, '').split(',').map(x => Number(x.trim()));
+    } else {
+      dataPoints = [Number(document.getElementById('current-median-val').textContent)];
+    }
+
+    if (telemetryChartInstance) telemetryChartInstance.destroy();
+
+    // Apple-style fade gradient
+    let gradient = ctx.createLinearGradient(0, 0, 0, 60);
+    gradient.addColorStop(0, 'rgba(45,226,197,0.5)'); // Bright at the line
+    gradient.addColorStop(1, 'rgba(45,226,197,0.0)'); // Fades to nothing at the bottom
+
+    telemetryChartInstance = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: dataPoints.map((_, i) => i),
+        datasets: [{
+          data: dataPoints,
+          borderColor: '#2DE2C5',
+          borderWidth: 3, // Bolder, cleaner line
+          backgroundColor: gradient, // Apply the custom gradient
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          borderCapStyle: 'round'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: { display: false, min: Math.min(...dataPoints) - 2, max: Math.max(...dataPoints) + 2 }
+        },
+        animation: { duration: 0 }
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("ApexPulse tracking listeners successfully initialized.");
+    bindTriageButtons();
+    connectWebSocket();
+    drawTelemetryGraph();
   });
 
   function closeTriageModal() {
     document.getElementById('triage-modal').classList.remove('active');
   }
 
-  // 4. The network pipeline trigger
   async function submitBedAllocation() {
     const selectedBed = document.getElementById('bed-selector').value;
     if(!selectedBed) {
       alert('Please designate an active emergency bay allocation before routing.');
       return;
     }
-
-    console.log("Sending network payload for: " + window.activePatientName + " to location: " + selectedBed);
 
     const formData = new URLSearchParams();
     formData.append('patientName', window.activePatientName);
@@ -534,12 +583,11 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData
       });
-
       const data = await response.json();
-      console.log("Server response received:", data);
 
       if (response.ok && data.status === 'success') {
-        window.location.reload();
+        closeTriageModal();
+        refreshDashboardQuietly();
       } else {
         alert('Server Allocation Error: ' + data.message);
       }
@@ -547,6 +595,39 @@
       console.error('Network execution failure:', error);
       alert('Failed to connect to the ApexPulse backend service pipeline.');
     }
+  }
+
+  let stompClient = null;
+
+  function connectWebSocket() {
+    let socket = new SockJS('/ws-triage');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+      console.log('✅ Connected to Triage WebSocket Engine');
+
+      stompClient.subscribe('/topic/queue', function (message) {
+        if (message.body === "HEAP_UPDATED") {
+          console.log("⚡ Background engine updated vitals! Refreshing UI silently...");
+          refreshDashboardQuietly();
+        }
+      });
+    });
+  }
+
+  function refreshDashboardQuietly() {
+    fetch('/')
+            .then(response => response.text())
+            .then(html => {
+              let parser = new DOMParser();
+              let doc = parser.parseFromString(html, 'text/html');
+              document.getElementById('dashboard-content').innerHTML = doc.getElementById('dashboard-content').innerHTML;
+
+              bindTriageButtons();
+              drawTelemetryGraph();
+            })
+            .catch(error => console.error("Error silently updating dashboard: ", error));
   }
 </script>
 
