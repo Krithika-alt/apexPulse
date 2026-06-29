@@ -145,6 +145,25 @@ public class Patient {
         return Math.min(99, this.priorityScore + ageBonus);
     }
 
+    public String getRecommendedAllocation() {
+        // Rule 1: Cardiac Arrest / Immediate Death Risk
+        if (this.getEsi() == 1 || this.getHeartRate() > 140 || this.getSystolicBp() < 80) {
+            return "Bay 1"; // Resus / Critical Care
+        }
+        // Rule 2: High-Risk Trauma / Severe Pain
+        else if (this.getEsi() == 2 || this.getSystolicBp() > 180) {
+            return "Bay 2"; // Trauma Bay
+        }
+        // Rule 3: Standard Acute Care (Stable but needs monitoring)
+        else if (this.getEsi() == 3 || this.getSpo2() < 94) {
+            return "Bed 12"; // Acute Care Bed
+        }
+        // Rule 4: Non-urgent / Fast Track
+        else {
+            return "Waiting Room"; // Discharge to Sub-Waiting
+        }
+    }
+
     // Setters
     public void setName(String name)                  { this.name = name; }
     public void setSex(String sex)                    { this.sex = sex; }
