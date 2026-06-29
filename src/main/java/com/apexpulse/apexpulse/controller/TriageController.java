@@ -2,14 +2,17 @@ package com.apexpulse.apexpulse.controller;
 
 import com.apexpulse.apexpulse.model.Patient;
 import com.apexpulse.apexpulse.structure.TriageHeap;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 @Controller
 public class TriageController {
@@ -19,7 +22,13 @@ public class TriageController {
     private final int bedsTotal = 563;
     private int bedsFree = 25;
 
-    public TriageController() {
+    private final java.util.LinkedList<Long> historicalWaitTimes = new java.util.LinkedList<>();
+    long predictedWaitOneHour =  0;
+    
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public TriageController(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
         seedMockData();
     }
 
@@ -28,8 +37,8 @@ public class TriageController {
         // 1. This just READS the list, it doesn't empty the heap!
         List<Patient> renderList = heap.drainSorted();
 
-        // 2. Modify their vitals in place
-        java.util.Random rand = new java.util.Random();
+        // 2. Modify their vitals in place to simulate real telemetry
+        Random rand = new Random();
         for (Patient p : renderList) {
             if (p.getPriorityScore() < 85) {
                 p.setHeartRate(p.getHeartRate() + (rand.nextInt(5) - 2));
@@ -40,17 +49,42 @@ public class TriageController {
         // 3. NO MORE INSERT LOOPS! Just tell the heap to re-balance itself.
         heap.rebuildHeap();
 
-        // 4. Calculate metrics safely
+        // 4. Calculate core metrics safely
         long critical = renderList.stream().filter(p -> p.getEsi() <= 2).count();
         long waitSum = renderList.stream().mapToLong(p ->
                 (Instant.now().getEpochSecond() - p.getArrivedAt().getEpochSecond()) / 60
         ).sum();
-        long medianWait = renderList.isEmpty() ? 0 : waitSum / renderList.size();
+        long currentMedianWait = renderList.isEmpty() ? 0 : waitSum / renderList.size();
 
+        // 🧠 FEATURE: Predictive Analytics Engine
+        // Save the current wait time to our sliding window history
+        historicalWaitTimes.add(currentMedianWait);
+        if (historicalWaitTimes.size() > 10) {
+            historicalWaitTimes.removeFirst(); // Keep only the last 10 snapshots (5 minutes of data)
+        }
+
+        // Calculate the "Velocity" (Rate of change)
+        if (historicalWaitTimes.size() >= 2) {
+            long oldestWait = historicalWaitTimes.getFirst();
+            long newestWait = historicalWaitTimes.getLast();
+            long waitDelta = newestWait - oldestWait;
+
+            // Extrapolate 60 minutes into the future
+            this.predictedWaitOneHour = currentMedianWait + (waitDelta * 12);
+
+            // Prevent negative predictions if the hospital is clearing out fast
+            if (this.predictedWaitOneHour < 0) this.predictedWaitOneHour = 0;
+        } else {
+            this.predictedWaitOneHour = currentMedianWait; // Default if not enough data yet
+        }
+
+        // 5. Package it all up for the frontend
         model.addAttribute("queue", renderList);
         model.addAttribute("queueSize", renderList.size());
         model.addAttribute("critical", critical);
-        model.addAttribute("medianWait", medianWait);
+        model.addAttribute("medianWait", currentMedianWait);
+        model.addAttribute("predictedWait", this.predictedWaitOneHour);
+        model.addAttribute("waitHistory", this.historicalWaitTimes);
         model.addAttribute("bedsTotal", bedsTotal);
         model.addAttribute("bedsFree", this.bedsFree);
         model.addAttribute("nextUp", renderList.isEmpty() ? null : renderList.get(0));
@@ -74,9 +108,9 @@ public class TriageController {
     }
 
     @PostMapping("/api/triage/allocate")
-    @org.springframework.web.bind.annotation.ResponseBody
-    public synchronized org.springframework.http.ResponseEntity<?> allocatePatientBed(
-            @org.springframework.web.bind.annotation.RequestParam java.util.Map<String, String> payload) {
+    @ResponseBody
+    public synchronized ResponseEntity<?> allocatePatientBed(
+            @RequestParam Map<String, String> payload) {
         try {
             String patientName = payload.get("patientName");
             String bedName = payload.get("bedName");
@@ -99,14 +133,14 @@ public class TriageController {
                 this.bedsFree--;
             }
 
-            return org.springframework.http.ResponseEntity.ok().body(java.util.Map.of("status", "success", "message", "Allocation confirmed"));
+            return ResponseEntity.ok().body(Map.of("status", "success", "message", "Allocation confirmed"));
         } catch (Exception e) {
             e.printStackTrace();
-            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("status", "error", "message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 
-    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 30000)
     public synchronized void runWaitTimeDeteriorationEngine() {
         try {
             List<Patient> activeQueue = heap.drainSorted();
@@ -117,9 +151,9 @@ public class TriageController {
                     p.setHeartRate(p.getHeartRate() + 1);
                 }
             }
-
-            // NO MORE INSERT LOOPS HERE EITHER!
             heap.rebuildHeap();
+
+            this.messagingTemplate.convertAndSend("/topic/queue", "HEAP_UPDATED");
 
         } catch (Exception e) {
             System.out.println("Scheduler pass skipped.");
@@ -144,7 +178,7 @@ public class TriageController {
         String[] lastNames = {"Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Wilson"};
         String[] complaints = {"Shortness of breath", "Dizziness", "Mild chest tightness", "Palpitations", "Fatigue", "Nausea"};
 
-        java.util.Random rand = new java.util.Random(42);
+        Random rand = new Random(42);
 
         for (int i = 0; i < 30; i++) {
             String randomName = lastNames[rand.nextInt(lastNames.length)] + ", " + firstNames[rand.nextInt(firstNames.length)];
