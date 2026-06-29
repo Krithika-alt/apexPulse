@@ -17,14 +17,18 @@ import java.util.Random;
 @Controller
 public class TriageController {
 
-    // Removed 'final' so we can cleanly destroy and rebuild the heap to prevent ghosts
     private TriageHeap heap = new TriageHeap();
     private final int bedsTotal = 563;
-    private int bedsFree = 25;
+
+    // The dynamic list of available beds
+    private final java.util.List<String> availableBeds = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    // The immutable ledger of who is currently admitted to a bed
+    private final java.util.concurrent.ConcurrentHashMap<String, Patient> activeRoster = new java.util.concurrent.ConcurrentHashMap<>();
 
     private final java.util.LinkedList<Long> historicalWaitTimes = new java.util.LinkedList<>();
     long predictedWaitOneHour =  0;
-    
+
     private final SimpMessagingTemplate messagingTemplate;
 
     public TriageController(SimpMessagingTemplate messagingTemplate) {
@@ -34,10 +38,8 @@ public class TriageController {
 
     @GetMapping("/")
     public synchronized String commandCenter(Model model) {
-        // 1. This just READS the list, it doesn't empty the heap!
         List<Patient> renderList = heap.drainSorted();
 
-        // 2. Modify their vitals in place to simulate real telemetry
         Random rand = new Random();
         for (Patient p : renderList) {
             if (p.getPriorityScore() < 85) {
@@ -46,39 +48,43 @@ public class TriageController {
             }
         }
 
-        // 3. NO MORE INSERT LOOPS! Just tell the heap to re-balance itself.
         heap.rebuildHeap();
 
-        // 4. Calculate core metrics safely
         long critical = renderList.stream().filter(p -> p.getEsi() <= 2).count();
-        long waitSum = renderList.stream().mapToLong(p ->
-                (Instant.now().getEpochSecond() - p.getArrivedAt().getEpochSecond()) / 60
-        ).sum();
-        long currentMedianWait = renderList.isEmpty() ? 0 : waitSum / renderList.size();
+        long currentMedianWait = 0;
+        if (!renderList.isEmpty()) {
+            List<Long> waitTimes = renderList.stream()
+                    .map(p -> (Instant.now().getEpochSecond() - p.getArrivedAt().getEpochSecond()) / 60)
+                    .sorted()
+                    .toList();
 
-        // 🧠 FEATURE: Predictive Analytics Engine
-        // Save the current wait time to our sliding window history
-        historicalWaitTimes.add(currentMedianWait);
-        if (historicalWaitTimes.size() > 10) {
-            historicalWaitTimes.removeFirst(); // Keep only the last 10 snapshots (5 minutes of data)
+            int size = waitTimes.size();
+            if (size % 2 == 0) {
+                currentMedianWait = (waitTimes.get(size / 2 - 1) + waitTimes.get(size / 2)) / 2;
+            } else {
+                currentMedianWait = waitTimes.get(size / 2);
+            }
         }
 
-        // Calculate the "Velocity" (Rate of change)
+        historicalWaitTimes.add(currentMedianWait);
+        if (historicalWaitTimes.size() > 10) {
+            historicalWaitTimes.removeFirst();
+        }
+
         if (historicalWaitTimes.size() >= 2) {
             long oldestWait = historicalWaitTimes.getFirst();
             long newestWait = historicalWaitTimes.getLast();
             long waitDelta = newestWait - oldestWait;
 
-            // Extrapolate 60 minutes into the future
-            this.predictedWaitOneHour = currentMedianWait + (waitDelta * 12);
+            if (waitDelta > 3) waitDelta = 3;
+            if (waitDelta < -3) waitDelta = -3;
 
-            // Prevent negative predictions if the hospital is clearing out fast
+            this.predictedWaitOneHour = currentMedianWait + (waitDelta * 12);
             if (this.predictedWaitOneHour < 0) this.predictedWaitOneHour = 0;
         } else {
-            this.predictedWaitOneHour = currentMedianWait; // Default if not enough data yet
+            this.predictedWaitOneHour = currentMedianWait;
         }
 
-        // 5. Package it all up for the frontend
         model.addAttribute("queue", renderList);
         model.addAttribute("queueSize", renderList.size());
         model.addAttribute("critical", critical);
@@ -86,8 +92,11 @@ public class TriageController {
         model.addAttribute("predictedWait", this.predictedWaitOneHour);
         model.addAttribute("waitHistory", this.historicalWaitTimes);
         model.addAttribute("bedsTotal", bedsTotal);
-        model.addAttribute("bedsFree", this.bedsFree);
+
+        model.addAttribute("bedsFree", this.availableBeds.size());
+        model.addAttribute("availableBeds", this.availableBeds);
         model.addAttribute("nextUp", renderList.isEmpty() ? null : renderList.get(0));
+        model.addAttribute("activeRoster", this.activeRoster);
         model.addAttribute("screen", "command");
 
         return "command";
@@ -109,31 +118,69 @@ public class TriageController {
 
     @PostMapping("/api/triage/allocate")
     @ResponseBody
-    public synchronized ResponseEntity<?> allocatePatientBed(
-            @RequestParam Map<String, String> payload) {
+    public synchronized ResponseEntity<?> allocatePatientBed(@RequestParam Map<String, String> payload) {
         try {
             String patientName = payload.get("patientName");
             String bedName = payload.get("bedName");
 
             List<Patient> allPatients = heap.drainSorted();
+            Patient patientToAdmit = null;
 
-            // Remove the target patient from our temporary list
-            boolean removed = allPatients.removeIf(patient ->
-                    patient.getName().trim().equalsIgnoreCase(patientName.trim())
-            );
+            java.util.Iterator<Patient> iterator = allPatients.iterator();
+            while(iterator.hasNext()){
+                Patient p = iterator.next();
+                if(p.getName().trim().equalsIgnoreCase(patientName.trim())){
+                    patientToAdmit = p;
+                    iterator.remove();
+                    break;
+                }
+            }
 
-            // THE NUCLEAR OPTION: Completely destroy the old heap and build a fresh one
-            // so duplication is literally impossible.
             this.heap = new TriageHeap();
             for (Patient remainingPatient : allPatients) {
                 this.heap.insert(remainingPatient);
             }
 
-            if (this.bedsFree > 0 && bedName != null && !bedName.trim().equalsIgnoreCase("Waiting Room")) {
-                this.bedsFree--;
-            }
+            if (patientToAdmit != null) {
+                activeRoster.put(bedName, patientToAdmit);
 
-            return ResponseEntity.ok().body(Map.of("status", "success", "message", "Allocation confirmed"));
+                if (bedName != null && !bedName.trim().equalsIgnoreCase("Waiting Room")) {
+                    this.availableBeds.remove(bedName);
+                }
+
+                messagingTemplate.convertAndSend("/topic/queue", "HEAP_UPDATED");
+                return ResponseEntity.ok().body(Map.of("status", "success", "message", "Allocation confirmed"));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Patient not found."));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // 🧠 FEATURE: The Discharge API Endpoint
+    @PostMapping("/api/triage/discharge")
+    @ResponseBody
+    public synchronized ResponseEntity<?> dischargePatientBed(@RequestParam Map<String, String> payload) {
+        try {
+            String bedName = payload.get("bedName");
+
+            if (bedName != null && activeRoster.containsKey(bedName)) {
+                // 1. Remove patient from the active roster
+                activeRoster.remove(bedName);
+
+                // 2. Add the bed back to the available pool!
+                if (!bedName.trim().equalsIgnoreCase("Waiting Room")) {
+                    this.availableBeds.add(bedName);
+                }
+
+                // 3. Ping the frontend to silently refresh
+                messagingTemplate.convertAndSend("/topic/queue", "HEAP_UPDATED");
+                return ResponseEntity.ok().body(Map.of("status", "success", "message", "Patient Discharged."));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Bed is already empty."));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
@@ -161,14 +208,22 @@ public class TriageController {
     }
 
     private void seedMockData() {
-        // Destroy any ghost data left in memory from a previous launch
         this.heap = new TriageHeap();
         long now = Instant.now().getEpochSecond();
 
+        this.availableBeds.clear();
+        this.availableBeds.add("Bay 1");
+        this.availableBeds.add("Bay 2");
+        this.availableBeds.add("Bed 12");
+        this.availableBeds.add("Bed 14");
+        for (int i = 101; i <= 119; i++) {
+            this.availableBeds.add("Bed " + i);
+        }
+
         heap.insert(new Patient("Okafor, Daniel",   "M", 61, "Chest pain, diaphoresis",        128, 145,  92, 89, 26, 37.0, true,  Instant.ofEpochSecond(now - 240)));
-        heap.insert(new Patient("Reyes, Marisol",   "F", 54, "Unresponsive, ?cardiac arrest",   42, 70,  40, 84,  8, 36.1, true,  Instant.ofEpochSecond(now - 120)));
-        heap.insert(new Patient("Whitlock, James",  "M", 73, "SOB, ?CHF exacerbation",         118, 162, 98, 92, 25, 36.8, false, Instant.ofEpochSecond(now - 660)));
-        heap.insert(new Patient("Nguyen, Thanh",    "F", 48, "Palpitations, ?AF RVR",          146, 104, 72, 95, 20, 36.9, false, Instant.ofEpochSecond(now - 1080)));
+        heap.insert(new Patient("Reyes, Marisol",   "F", 54, "Unresponsive, cardiac arrest",   42, 70,  40, 84,  8, 36.1, true,  Instant.ofEpochSecond(now - 120)));
+        heap.insert(new Patient("Whitlock, James",  "M", 73, "SOB, CHF exacerbation",         118, 162, 98, 92, 25, 36.8, false, Instant.ofEpochSecond(now - 660)));
+        heap.insert(new Patient("Nguyen, Thanh",    "F", 48, "Palpitations, AF RVR",          146, 104, 72, 95, 20, 36.9, false, Instant.ofEpochSecond(now - 1080)));
         heap.insert(new Patient("Abara, Grace",     "F", 39, "Abdominal pain, vomiting",       104, 128, 82, 96, 18, 38.6, false, Instant.ofEpochSecond(now - 2520)));
         heap.insert(new Patient("Petrov, Anton",    "M", 56, "Hypertensive urgency",            92, 188, 104, 97, 17, 36.7, false, Instant.ofEpochSecond(now - 3300)));
         heap.insert(new Patient("Sundqvist, Lena",  "F", 31, "Laceration, left forearm",        78, 118, 76, 99, 15, 36.6, false, Instant.ofEpochSecond(now - 4080)));
