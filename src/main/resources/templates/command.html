@@ -139,6 +139,10 @@
       font-size: 14px;
       margin-top: 2px;
     }
+
+    /* Sliding Window Scrollbar Polish */
+    .sliding-window::-webkit-scrollbar { height: 6px; }
+    .sliding-window::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -224,9 +228,7 @@
           </div>
 
           <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px; position:relative; overflow:hidden; display:flex; flex-direction:column; min-height:130px;">
-
             <div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:var(--brandsoft); border-radius:50%; filter:blur(20px);"></div>
-
             <div style="padding:15px 17px; z-index:2; position:relative;">
               <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Median wait</div>
               <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;">
@@ -239,7 +241,6 @@
                     </span>
               </div>
             </div>
-
             <div id="chart-data-hidden" style="display:none;" th:text="${waitHistory}"></div>
             <div style="position:absolute; bottom:-5px; left:0; right:0; height:60px; z-index:1;">
               <canvas id="telemetryChart"></canvas>
@@ -249,11 +250,12 @@
           <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px;">
             <div style="font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);font-weight:600;">Beds free</div>
             <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:30px;margin-top:7px;line-height:1;color:var(--brand);">
-              <span th:text="${bedsFree}">0</span><span style="font-size:14px;color:var(--text3);" th:text="'/' + ${bedsTotal}">/22</span>
+              <span th:text="${bedsFree}">0</span><span style="font-size:14px;color:var(--text3);" th:text="'/' + ${bedsTotal}">/563</span>
             </div>
           </div>
         </div>
 
+        <!-- NEXT UP HIGHLIGHT -->
         <div th:if="${nextUp != null}"
              th:style="'background:linear-gradient(120deg,' + ${nextUp.esiCssVar.replace('var(--esi', 'var(--esi').replace(')', 'soft)')} + ',var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;'"
              style="background:linear-gradient(120deg,var(--esi1soft),var(--panel) 52%);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;position:relative;overflow:hidden;">
@@ -320,6 +322,44 @@
                    th:text="${#numbers.formatDecimal(nextUp.temperature,1,1)}">—</div>
               <div style="font-size:9px;color:var(--text3);margin-top:4px;">°C</div>
             </div>
+          </div>
+        </div>
+
+        <!-- ✨ NEW: DYNAMIC SLIDING FLOOR PLAN ✨ -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;">Active Floor Plan</div>
+            <div style="font-size:11px;color:var(--brand);font-family:'IBM Plex Mono',monospace;font-weight:600;">live telemetry sync · online</div>
+          </div>
+
+          <!-- The Sliding Window Container -->
+          <div class="sliding-window" style="display:flex; overflow-x:auto; gap:16px; padding-bottom:12px; scroll-snap-type: x mandatory;">
+
+            <!-- LOOP 1: RENDER OCCUPIED BEDS FIRST -->
+            <div th:each="entry : ${activeRoster}" style="flex: 0 0 280px; scroll-snap-align: start;">
+              <div th:with="bedName=${entry.key}, bedPatient=${entry.value}" th:style="'background:linear-gradient(180deg, var(--panel), var(--bg2)); border:1px solid ' + ${bedPatient.esiCssVar} + '; border-top: 4px solid ' + ${bedPatient.esiCssVar} + '; border-radius:12px; padding:16px; min-height:115px; position:relative; box-shadow: 0 4px 12px rgba(0,0,0,0.2);'">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div>
+                    <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--text);">
+                      <span th:text="${bedName}">Bed</span>
+                      <span style="font-size:10px; color:var(--text3); font-weight:500; font-family:'IBM Plex Sans', sans-serif;" th:text="${bedName.startsWith('Bay') ? '· Resus/Trauma' : '· Acute'}"></span>
+                    </div>
+                    <div style="font-size:13px; font-weight:600; color:var(--text); margin-top:6px;" th:text="${bedPatient.name}">Name</div>
+                    <div style="font-size:10.5px; color:var(--text2); margin-top:2px;" th:text="${bedPatient.complaint}">Complaint</div>
+                  </div>
+                  <div th:style="'background:' + ${bedPatient.esiCssVar} + '; color:#fff; font-family:\'IBM Plex Mono\',monospace; font-weight:700; font-size:13px; padding:4px 7px; border-radius:6px; flex-shrink: 0;'" th:text="${bedPatient.heartRate} + ' bpm'">HR</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOOP 2: RENDER AVAILABLE BEDS SECOND -->
+            <div th:each="bedName : ${availableBeds}" style="flex: 0 0 160px; scroll-snap-align: start;">
+              <div style="background:var(--bg2); border:1px dashed var(--line2); border-radius:12px; padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:115px; color:var(--text3); transition: all 0.2s;">
+                <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;" th:text="${bedName}">Bed</div>
+                <div style="margin-top:10px; font-size:10px; font-weight:600; color:var(--text2); background:var(--panel); padding:4px 10px; border-radius:4px;">AVAILABLE</div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -450,13 +490,13 @@
 
     <div style="margin-top:auto; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:20px;">
       <label style="font-size:11px; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; color:var(--text3); font-weight:600; letter-spacing:0.05em;">Assign Trauma Bay / ER Bed</label>
+
+      <!-- ✨ NEW: DYNAMIC MODAL DROPDOWN ✨ -->
       <select class="select-bed" id="bed-selector">
         <option value="">-- Select Available Allocation --</option>
-        <option value="Bay 1">Bay 1 (Critical Care / Resus)</option>
-        <option value="Bay 2">Bay 2 (Trauma)</option>
-        <option value="Bed 12">Bed 12 (Acute Care)</option>
-        <option value="Bed 14">Bed 14 (Acute Care)</option>
         <option value="Waiting Room">Discharge to Sub-Waiting</option>
+        <!-- Thymeleaf Loop generates all remaining available beds directly from Java! -->
+        <option th:each="bed : ${availableBeds}" th:value="${bed}" th:text="${bed}"></option>
       </select>
 
       <button class="btn-action" style="background:var(--brand); color:#0B0F17; font-family:'IBM Plex Sans', sans-serif; font-weight:700; font-size:13.5px; text-align:center; padding:14px; border:none; margin-top:8px; border-radius:8px;" onclick="submitBedAllocation()">
@@ -482,8 +522,6 @@
 
         const smartRecommendation = e.target.getAttribute('data-recommended-bed');
 
-        console.log("Button clicked for patient: " + window.activePatientName);
-
         const row = e.target.closest('tr');
         const infoSubText = row.querySelector('td:nth-child(2) div:nth-child(2)').textContent;
 
@@ -497,7 +535,14 @@
         document.getElementById('modal-patient-complaint').textContent = "Chief Complaint: " + medicalComplaint;
 
         if (smartRecommendation) {
-          document.getElementById('bed-selector').value = smartRecommendation;
+          // Verify the smart recommendation actually still exists in our dynamic dropdown
+          let selector = document.getElementById('bed-selector');
+          let optionExists = Array.from(selector.options).some(opt => opt.value === smartRecommendation);
+          if (optionExists) {
+            selector.value = smartRecommendation;
+          } else {
+            selector.value = ""; // Default to blank if the bed was already taken!
+          }
         }
 
         document.getElementById('triage-modal').classList.add('active');
@@ -522,10 +567,9 @@
 
     if (telemetryChartInstance) telemetryChartInstance.destroy();
 
-    // Apple-style fade gradient
     let gradient = ctx.createLinearGradient(0, 0, 0, 60);
-    gradient.addColorStop(0, 'rgba(45,226,197,0.5)'); // Bright at the line
-    gradient.addColorStop(1, 'rgba(45,226,197,0.0)'); // Fades to nothing at the bottom
+    gradient.addColorStop(0, 'rgba(45,226,197,0.5)');
+    gradient.addColorStop(1, 'rgba(45,226,197,0.0)');
 
     telemetryChartInstance = new Chart(canvas, {
       type: 'line',
@@ -534,8 +578,8 @@
         datasets: [{
           data: dataPoints,
           borderColor: '#2DE2C5',
-          borderWidth: 3, // Bolder, cleaner line
-          backgroundColor: gradient, // Apply the custom gradient
+          borderWidth: 3,
+          backgroundColor: gradient,
           fill: true,
           tension: 0.4,
           pointRadius: 0,
@@ -548,7 +592,11 @@
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         scales: {
           x: { display: false },
-          y: { display: false, min: Math.min(...dataPoints) - 2, max: Math.max(...dataPoints) + 2 }
+          y: {
+            display: false,
+            min: Number(document.getElementById('current-median-val').textContent) - 20,
+            max: Number(document.getElementById('current-median-val').textContent) + 20
+          }
         },
         animation: { duration: 0 }
       }
@@ -556,7 +604,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    console.log("ApexPulse tracking listeners successfully initialized.");
     bindTriageButtons();
     connectWebSocket();
     drawTelemetryGraph();
@@ -605,11 +652,8 @@
     stompClient.debug = null;
 
     stompClient.connect({}, function (frame) {
-      console.log('✅ Connected to Triage WebSocket Engine');
-
       stompClient.subscribe('/topic/queue', function (message) {
         if (message.body === "HEAP_UPDATED") {
-          console.log("⚡ Background engine updated vitals! Refreshing UI silently...");
           refreshDashboardQuietly();
         }
       });
