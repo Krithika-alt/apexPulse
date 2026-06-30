@@ -26,6 +26,9 @@ public class TriageController {
     // The immutable ledger of who is currently admitted to a bed
     private final java.util.concurrent.ConcurrentHashMap<String, Patient> activeRoster = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // 👉 NEW: Phase 1 of Discharge Pipeline - The Permanent Audit Ledger
+    private final java.util.LinkedList<Patient> dischargeLedger = new java.util.LinkedList<>();
+
     private final java.util.LinkedList<Long> historicalWaitTimes = new java.util.LinkedList<>();
     long predictedWaitOneHour =  0;
 
@@ -97,6 +100,10 @@ public class TriageController {
         model.addAttribute("availableBeds", this.availableBeds);
         model.addAttribute("nextUp", renderList.isEmpty() ? null : renderList.get(0));
         model.addAttribute("activeRoster", this.activeRoster);
+
+        // 👉 Pass the Discharge Ledger to the frontend so we can build the Audit Trail!
+        model.addAttribute("recentDischarges", this.dischargeLedger);
+
         model.addAttribute("screen", "command");
 
         return "command";
@@ -118,18 +125,21 @@ public class TriageController {
 
     @PostMapping("/api/triage/allocate")
     @ResponseBody
-    public synchronized ResponseEntity<?> allocatePatientBed(@RequestParam Map<String, String> payload) {
+    public synchronized ResponseEntity<?> allocatePatientBed(
+            @RequestParam("patientName") String patientName,
+            @RequestParam("bedName") String bedName) {
         try {
-            String patientName = payload.get("patientName");
-            String bedName = payload.get("bedName");
-
             List<Patient> allPatients = heap.drainSorted();
             Patient patientToAdmit = null;
+
+            String cleanTargetName = patientName.replace(" ", "").trim();
 
             java.util.Iterator<Patient> iterator = allPatients.iterator();
             while(iterator.hasNext()){
                 Patient p = iterator.next();
-                if(p.getName().trim().equalsIgnoreCase(patientName.trim())){
+                String cleanCurrentName = p.getName().replace(" ", "").trim();
+
+                if(cleanCurrentName.equalsIgnoreCase(cleanTargetName)){
                     patientToAdmit = p;
                     iterator.remove();
                     break;
@@ -159,23 +169,32 @@ public class TriageController {
         }
     }
 
-    // 🧠 FEATURE: The Discharge API Endpoint
+    // 🧠 FEATURE: Phase 1 - Permanent Data Retention on Discharge
     @PostMapping("/api/triage/discharge")
     @ResponseBody
-    public synchronized ResponseEntity<?> dischargePatientBed(@RequestParam Map<String, String> payload) {
+    public synchronized ResponseEntity<?> dischargePatientBed(@RequestParam("bedName") String bedName) {
         try {
-            String bedName = payload.get("bedName");
-
             if (bedName != null && activeRoster.containsKey(bedName)) {
-                // 1. Remove patient from the active roster
-                activeRoster.remove(bedName);
 
-                // 2. Add the bed back to the available pool!
-                if (!bedName.trim().equalsIgnoreCase("Waiting Room")) {
-                    this.availableBeds.add(bedName);
+                // 1. Extract the patient safely from the active bed
+                Patient dischargedPatient = activeRoster.remove(bedName);
+
+                // 2. Save them permanently to the top of the Audit Ledger!
+                dischargeLedger.addFirst(dischargedPatient);
+
+                // Keep memory clean: Only keep the last 50 discharges in RAM for the demo
+                if (dischargeLedger.size() > 50) {
+                    dischargeLedger.removeLast();
                 }
 
-                // 3. Ping the frontend to silently refresh
+                // 3. Add the bed back to the available pool!
+                if (!bedName.trim().equalsIgnoreCase("Waiting Room")) {
+                    this.availableBeds.add(bedName);
+                    // Re-sort the beds so "Bed 12" doesn't end up at the bottom of the dropdown
+                    java.util.Collections.sort(this.availableBeds);
+                }
+
+                // 4. Ping the frontend to silently refresh
                 messagingTemplate.convertAndSend("/topic/queue", "HEAP_UPDATED");
                 return ResponseEntity.ok().body(Map.of("status", "success", "message", "Patient Discharged."));
             } else {
@@ -198,7 +217,11 @@ public class TriageController {
                     p.setHeartRate(p.getHeartRate() + 1);
                 }
             }
-            heap.rebuildHeap();
+
+            this.heap = new TriageHeap();
+            for (Patient p : activeQueue) {
+                this.heap.insert(p);
+            }
 
             this.messagingTemplate.convertAndSend("/topic/queue", "HEAP_UPDATED");
 
