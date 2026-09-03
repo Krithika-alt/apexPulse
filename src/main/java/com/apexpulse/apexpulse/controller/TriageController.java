@@ -26,7 +26,6 @@ public class TriageController {
     // The immutable ledger of who is currently admitted to a bed
     private final java.util.concurrent.ConcurrentHashMap<String, Patient> activeRoster = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // 👉 NEW: Phase 1 of Discharge Pipeline - The Permanent Audit Ledger
     private final java.util.LinkedList<Patient> dischargeLedger = new java.util.LinkedList<>();
 
     private final java.util.LinkedList<Long> historicalWaitTimes = new java.util.LinkedList<>();
@@ -101,7 +100,6 @@ public class TriageController {
         model.addAttribute("nextUp", renderList.isEmpty() ? null : renderList.get(0));
         model.addAttribute("activeRoster", this.activeRoster);
 
-        // 👉 Pass the Discharge Ledger to the frontend so we can build the Audit Trail!
         model.addAttribute("recentDischarges", this.dischargeLedger);
 
         model.addAttribute("screen", "command");
@@ -169,7 +167,6 @@ public class TriageController {
         }
     }
 
-    // 🧠 FEATURE: Phase 1 - Permanent Data Retention on Discharge
     @PostMapping("/api/triage/discharge")
     @ResponseBody
     public synchronized ResponseEntity<?> dischargePatientBed(@RequestParam("bedName") String bedName) {
@@ -207,7 +204,7 @@ public class TriageController {
     }
 
     @Scheduled(fixedRate = 30000)
-    public synchronized void runWaitTimeDeteriorationEngine() {
+    public synchronized void runWaitTmeDeteriorationEngine() {
         try {
             List<Patient> activeQueue = heap.drainSorted();
             if (activeQueue.isEmpty()) return;
@@ -273,7 +270,6 @@ public class TriageController {
             boolean cardiac = rand.nextDouble() > 0.85;
 
             long randomTimeOffset = rand.nextInt(10800);
-
             this.heap.insert(new Patient(
                     randomName, randomSex, randomAge, randomComplaint,
                     hr, sbp, dbp, o2, rr, temp, cardiac,
