@@ -2,7 +2,7 @@ package com.apexpulse.apexpulse.model;
 
 import java.time.Instant;
 
-public class Patient {
+public class Patient implements Comparable<Patient> {
     private String name;
     private String sex;
     private int age;
@@ -14,6 +14,8 @@ public class Patient {
     private int respiratoryRate;
     private double temperature;
     private boolean cardiacFlag;
+    private int cholesterol; // Added from your Kaggle dataset features
+    private int active;      // Added from your Kaggle dataset features
     private Instant arrivedAt;
     private int priorityScore;
 
@@ -22,7 +24,7 @@ public class Patient {
     public Patient(String name, String sex, int age, String complaint,
                    int heartRate, int systolicBp, int diastolicBp,
                    int spo2, int respiratoryRate, double temperature,
-                   boolean cardiacFlag, Instant arrivedAt) {
+                   boolean cardiacFlag, int cholesterol, int active, Instant arrivedAt) {
         this.name = name;
         this.sex = sex;
         this.age = age;
@@ -34,6 +36,8 @@ public class Patient {
         this.respiratoryRate = respiratoryRate;
         this.temperature = temperature;
         this.cardiacFlag = cardiacFlag;
+        this.cholesterol = cholesterol;
+        this.active = active;
         this.arrivedAt = arrivedAt;
         this.priorityScore = computeScore();
     }
@@ -47,7 +51,7 @@ public class Patient {
 
         // 2. Blood Pressure (ESI/NEWS2-style severity tiers)
         if (systolicBp < 90)         score += 26; // Shock warning
-        else if (systolicBp >= 180)  score += 20; // Critical Crisis (Highest threat evaluated first)
+        else if (systolicBp >= 180)  score += 20; // Critical Crisis
         else if (systolicBp >= 140)  score += 14; // Stage 2 Hypertension
 
         // 3. Heart Rate
@@ -62,7 +66,19 @@ public class Patient {
         // 5. Acute Cardiac Markers
         if (cardiacFlag)             score += 24;
 
+        // 6. ML Model Feature Integration (Cholesterol & Sedentary risk from Gradient Boosting analysis)
+        if (cholesterol == 3)        score += 15; // High cholesterol risk tier
+        else if (cholesterol == 2)   score += 8;
+        if (active == 0)             score += 5;  // Inactivity risk factor
+
         return Math.min(99, score);
+    }
+
+    // REQUIRED FOR TRIAGE HEAP: Implements Comparable interface
+    @Override
+    public int compareTo(Patient other) {
+        // Higher priority score bubbles to the top of the heap (root)
+        return Integer.compare(other.getPriorityScore(), this.getPriorityScore());
     }
 
     public int getEsi() {
@@ -93,7 +109,7 @@ public class Patient {
             default -> 120;
         };
         double percentage = ((double) mins / limit) * 100;
-        return Math.min(100.0, percentage); // Cap at 100%
+        return Math.min(100.0, percentage);
     }
 
     public String getBp() { return systolicBp + "/" + diastolicBp; }
@@ -133,34 +149,25 @@ public class Patient {
     public int getRespiratoryRate()  { return respiratoryRate; }
     public double getTemperature()   { return temperature; }
     public boolean isCardiacFlag()   { return cardiacFlag; }
+    public int getCholesterol()      { return cholesterol; }
+    public int getActive()           { return active; }
     public Instant getArrivedAt()    { return arrivedAt; }
+
     public int getPriorityScore() {
-        // 1. Calculate how many minutes the patient has been waiting
         long minutesWaiting = (Instant.now().getEpochSecond() - arrivedAt.getEpochSecond()) / 60;
-
-        // 2. Add 1 extra priority point for every 10 minutes spent waiting (Ageing Factor)
         int ageBonus = (int) (minutesWaiting / 10);
-
-        // 3. Return the combined score, capped at 99
         return Math.min(99, this.priorityScore + ageBonus);
     }
 
     public String getRecommendedAllocation() {
-        // Rule 1: Cardiac Arrest / Immediate Death Risk
         if (this.getEsi() == 1 || this.getHeartRate() > 140 || this.getSystolicBp() < 80) {
-            return "Bay 1"; // Resus / Critical Care
-        }
-        // Rule 2: High-Risk Trauma / Severe Pain
-        else if (this.getEsi() == 2 || this.getSystolicBp() > 180) {
-            return "Bay 2"; // Trauma Bay
-        }
-        // Rule 3: Standard Acute Care (Stable but needs monitoring)
-        else if (this.getEsi() == 3 || this.getSpo2() < 94) {
-            return "Bed 12"; // Acute Care Bed
-        }
-        // Rule 4: Non-urgent / Fast Track
-        else {
-            return "Waiting Room"; // Discharge to Sub-Waiting
+            return "Bay 1";
+        } else if (this.getEsi() == 2 || this.getSystolicBp() > 180) {
+            return "Bay 2";
+        } else if (this.getEsi() == 3 || this.getSpo2() < 94) {
+            return "Bed 12";
+        } else {
+            return "Waiting Room";
         }
     }
 
@@ -176,5 +183,7 @@ public class Patient {
     public void setRespiratoryRate(int rr)           { this.respiratoryRate = rr; this.priorityScore = computeScore(); }
     public void setTemperature(double temp)          { this.temperature = temp; this.priorityScore = computeScore(); }
     public void setCardiacFlag(boolean flag)         { this.cardiacFlag = flag; this.priorityScore = computeScore(); }
+    public void setCholesterol(int cholesterol)      { this.cholesterol = cholesterol; this.priorityScore = computeScore(); }
+    public void setActive(int active)                { this.active = active; this.priorityScore = computeScore(); }
     public void setArrivedAt(Instant arrivedAt)      { this.arrivedAt = arrivedAt; }
 }
