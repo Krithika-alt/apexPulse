@@ -240,14 +240,15 @@ public class TriageController {
             this.availableBeds.add("Bed " + i);
         }
 
-        heap.insert(new Patient("Okafor, Daniel",   "M", 61, "Chest pain, diaphoresis",        128, 145,  92, 89, 26, 37.0, true,  Instant.ofEpochSecond(now - 240)));
-        heap.insert(new Patient("Reyes, Marisol",   "F", 54, "Unresponsive, cardiac arrest",   42, 70,  40, 84,  8, 36.1, true,  Instant.ofEpochSecond(now - 120)));
-        heap.insert(new Patient("Whitlock, James",  "M", 73, "SOB, CHF exacerbation",         118, 162, 98, 92, 25, 36.8, false, Instant.ofEpochSecond(now - 660)));
-        heap.insert(new Patient("Nguyen, Thanh",    "F", 48, "Palpitations, AF RVR",          146, 104, 72, 95, 20, 36.9, false, Instant.ofEpochSecond(now - 1080)));
-        heap.insert(new Patient("Abara, Grace",     "F", 39, "Abdominal pain, vomiting",       104, 128, 82, 96, 18, 38.6, false, Instant.ofEpochSecond(now - 2520)));
-        heap.insert(new Patient("Petrov, Anton",    "M", 56, "Hypertensive urgency",            92, 188, 104, 97, 17, 36.7, false, Instant.ofEpochSecond(now - 3300)));
-        heap.insert(new Patient("Sundqvist, Lena",  "F", 31, "Laceration, left forearm",        78, 118, 76, 99, 15, 36.6, false, Instant.ofEpochSecond(now - 4080)));
-        heap.insert(new Patient("Hassan, Omar",     "M", 24, "Med refill, stable",              70, 120, 78, 100, 14, 36.5, false, Instant.ofEpochSecond(now - 6000)));
+        // Added cholesterol (1-3) and active (0 or 1) fields at the end of each argument list
+        heap.insert(new Patient("Okafor, Daniel",   "M", 61, "Chest pain, diaphoresis",        128, 145,  92, 89, 26, 37.0, true,  3, 0, Instant.ofEpochSecond(now - 240)));
+        heap.insert(new Patient("Reyes, Marisol",   "F", 54, "Unresponsive, cardiac arrest",   42, 70,  40, 84,  8, 36.1, true,  2, 1, Instant.ofEpochSecond(now - 120)));
+        heap.insert(new Patient("Whitlock, James",  "M", 73, "SOB, CHF exacerbation",         118, 162, 98, 92, 25, 36.8, false, 3, 0, Instant.ofEpochSecond(now - 660)));
+        heap.insert(new Patient("Nguyen, Thanh",    "F", 48, "Palpitations, AF RVR",          146, 104, 72, 95, 20, 36.9, false, 1, 1, Instant.ofEpochSecond(now - 1080)));
+        heap.insert(new Patient("Abara, Grace",     "F", 39, "Abdominal pain, vomiting",       104, 128, 82, 96, 18, 38.6, false, 1, 1, Instant.ofEpochSecond(now - 2520)));
+        heap.insert(new Patient("Petrov, Anton",    "M", 56, "Hypertensive urgency",            92, 188, 104, 97, 17, 36.7, false, 2, 0, Instant.ofEpochSecond(now - 3300)));
+        heap.insert(new Patient("Sundqvist, Lena",  "F", 31, "Laceration, left forearm",        78, 118, 76, 99, 15, 36.6, false, 1, 1, Instant.ofEpochSecond(now - 4080)));
+        heap.insert(new Patient("Hassan, Omar",     "M", 24, "Med refill, stable",              70, 120, 78, 100, 14, 36.5, false, 1, 1, Instant.ofEpochSecond(now - 6000)));
 
         String[] firstNames = {"John", "Emma", "Robert", "Sophia", "William", "Olivia", "David", "Ava", "Joseph", "Mia"};
         String[] lastNames = {"Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Wilson"};
@@ -269,10 +270,14 @@ public class TriageController {
             double temp = 36.5 + (rand.nextDouble() * 2.5);
             boolean cardiac = rand.nextDouble() > 0.85;
 
+            // Randomly assign cholesterol (1, 2, or 3) and activity status (0 or 1) to match dataset distribution
+            int randChol = 1 + rand.nextInt(3);
+            int randActive = rand.nextInt(2);
+
             long randomTimeOffset = rand.nextInt(10800);
             this.heap.insert(new Patient(
                     randomName, randomSex, randomAge, randomComplaint,
-                    hr, sbp, dbp, o2, rr, temp, cardiac,
+                    hr, sbp, dbp, o2, rr, temp, cardiac, randChol, randActive,
                     Instant.ofEpochSecond(now - randomTimeOffset)
             ));
         }
