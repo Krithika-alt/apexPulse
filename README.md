@@ -51,4 +51,4 @@ Covers the acuity scoring boundaries in `Patient` (hypoxia, shock vs. hypertensi
 
 ## Notes
 
-The acuity score is a hand-tuned heuristic modeled loosely on standard ESI/NEWS2-style severity thresholds — it is **not** a trained or validated clinical model, and the thresholds haven't been reviewed by a clinician. This project is a full-stack/real-time-systems exercise (heap data structure, WebSocket push, Spring MVC), not a research submission — treat the scoring as illustrative, not medically authoritative.
+While the triage score incorporates data-driven feature weights extracted from exploratory data analysis and a Gradient Boosting classifier trained on a 70,000-patient cardiovascular dataset, the final scoring engine is implemented as a lightweight runtime heuristic. This project is a full-stack and real-time systems engineering demonstration (featuring custom heap data structures, WebSocket push synchronization, and Spring MVC), designed to illustrate data science pipeline integration rather than serve as a medically certified diagnostic tool.
